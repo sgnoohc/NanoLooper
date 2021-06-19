@@ -14,7 +14,14 @@ Set up the environment
 
 Compile the code
 
-    cd NanoTools/NanoCORE
     make -j # Compile
+
+Run the looper
+
+    ./runNanoLooper
+
+Examine the code
+
+    vim NanoLooper/main.cc
 
 
