@@ -17,56 +17,56 @@ int main()
     Double_t cs = 0.018 * 137;
 
     // Input Path
-    for (unsigned i = 0; i < 26; i++) 
+    for (unsigned i = 0; i < 26; i++)
     {
-	TString input = "/hadoop/cms/store/user/phchang/VBSHWWSignalGeneration/UL18_VBSWZH_incl_C2V_4_Azure_v1/merged/output_" + std::to_string(i) + ".root";
+        TString input = "/hadoop/cms/store/user/phchang/VBSHWWSignalGeneration/UL18_VBSWZH_incl_C2V_4_Azure_v1/merged/output_" + std::to_string(i) + ".root";
 
-    // Name of the TTree in the input root files.
-	TString input_tree_name = "Events";
+        // Name of the TTree in the input root files.
+        TString input_tree_name = "Events";
 
-    // Create the TChain that holds the TTree's of the NanoAOD ntuples.
-	TChain* events_tchain = RooUtil::FileUtil::createTChain(input_tree_name, input);
+        // Create the TChain that holds the TTree's of the NanoAOD ntuples.
+        TChain* events_tchain = RooUtil::FileUtil::createTChain(input_tree_name, input);
 
-    // Max number of events to loop. (-1 = loop over all)
-    // int n_events = 1; // Looping over first event only
-	int n_events = -1; // To loop over all events
+        // Max number of events to loop. (-1 = loop over all)
+        // int n_events = 1; // Looping over first event only
+        int n_events = -1; // To loop over all events
 
-    // Create a looper that will handle event looping
-	RooUtil::Looper<Nano> looper;
+        // Create a looper that will handle event looping
+        RooUtil::Looper<Nano> looper;
 
-	nt.SetYear(2018);
-    // Initializer the looper
-	looper.init(events_tchain, &nt, n_events);
+        nt.SetYear(2018);
+        // Initializer the looper
+        looper.init(events_tchain, &nt, n_events);
 
-    
+
         // Loop through events
-	while (looper.nextEvent())
-	{
-        // Do your analysis here
-        // float mjj = blah blah;
+        while (looper.nextEvent())
+        {
+            // Do your analysis here
+            // float mjj = blah blah;
 
-	// Select Leptons for the event
-	
-	    bool isvbswzh = nt.GenPart_status()[2] == 23;
-	    
-	    if (isvbswzh)
-	    {
-	    // LV ordered [NObjects];
-		const LV& ijet = nt.GenPart_p4()[2];
-		const LV& jjet = nt.GenPart_p4()[3];
-		const LV& jet0 = ijet.pt() > jjet.pt() ? ijet : jjet;
-		const LV& jet1 = ijet.pt() > jjet.pt() ? jjet : ijet;
-		const LV& W = nt.GenPart_p4()[4];
-		const LV& Z = nt.GenPart_p4()[5];
-		const LV& H = nt.GenPart_p4()[6];
-	    // Fill histograms
-		    massVBF->Fill((ijet + jjet).M());
-		    deltaEta->Fill(TMath::Abs(ijet.Eta()-jjet.Eta()));		
-		    ptZ->Fill(Z.Pt());
-		    ptW->Fill(W.Pt());
-		    ptH->Fill(H.Pt());	
-	    }
-	}
+            // Select Leptons for the event
+
+            bool isvbswzh = nt.GenPart_status()[2] == 23;
+
+            if (isvbswzh)
+            {
+                // LV ordered [NObjects];
+                const LV& ijet = nt.GenPart_p4()[2];
+                const LV& jjet = nt.GenPart_p4()[3];
+                const LV& jet0 = ijet.pt() > jjet.pt() ? ijet : jjet;
+                const LV& jet1 = ijet.pt() > jjet.pt() ? jjet : ijet;
+                const LV& W = nt.GenPart_p4()[4];
+                const LV& Z = nt.GenPart_p4()[5];
+                const LV& H = nt.GenPart_p4()[6];
+                // Fill histograms
+                massVBF->Fill((ijet + jjet).M());
+                deltaEta->Fill(TMath::Abs(ijet.Eta()-jjet.Eta()));
+                ptZ->Fill(Z.Pt());
+                ptW->Fill(W.Pt());
+                ptH->Fill(H.Pt());
+            }
+        }
         // Alternatively, one can print the same (and more) information using tools developed by our research group's (and colleagues).
         // dumpGenParticleInfos();
 
@@ -85,8 +85,8 @@ int main()
     ptZ->Scale(cs / (ptZ->Integral()));
     ptZ->Write();
 
-    output_file->Close(); 
+    output_file->Close();
 
-    
+
     return 0;
 }
