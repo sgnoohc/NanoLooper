@@ -430,10 +430,11 @@ int main()
     // Create a looper that will handle event looping
     RooUtil::Looper<Nano> looper;
 
+    // TODO: Update properly in the future. For now, this is an AdHoc solution.
     nt.SetYear(Analysis::year_);
+
     // Initializer the looper
     looper.init(events_tchain, &nt, n_events);
-
 
     // Loop through events
     while (looper.nextEvent())
