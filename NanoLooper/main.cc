@@ -386,8 +386,7 @@ namespace Hist
 int main()
 {
     // Create your output root file
-    // TFile* output_file = new TFile("/home/users/joytzphysics/NanoLooper/NanoLooper/wzh.root", "recreate");
-    TFile* output_file = new TFile("output.root", "recreate");
+    TFile* output_file = new TFile("/home/users/joytzphysics/NanoLooper/NanoLooper/wzh.root", "recreate");
 
     // Create Histograms
     Hist::bookHistograms();
@@ -413,7 +412,6 @@ int main()
     {
         TString input_temp = "/hadoop/cms/store/user/phchang/VBSHWWSignalGeneration/UL18_VBSWZH_incl_C2V_4_Azure_v1/merged/output_" + std::to_string(i) + ".root";
         input_file_paths.push_back(input_temp);
-        break;
     }
 
     // Use RooUtil::StringUtil to concatenate the input file paths
