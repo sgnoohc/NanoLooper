@@ -18,6 +18,7 @@ namespace Obj
         LV p4;
         int isTight;
         int jetIdx; // Overlapping jet index
+	int pdgid;
     };
 
     //_______________________________________________________
@@ -27,7 +28,9 @@ namespace Obj
         LV p4;
         int isTight;
         int jetIdx; // Overlapping jet index
+	int pdgid;
     };
+
 
     //_______________________________________________________
     // Jet data structure
@@ -66,6 +69,7 @@ namespace Analysis
     //_______________________________________________________
     // Flags used in the anlaysis
     bool is_vbs_wzh_;
+    bool is_hbb;
 
     //_______________________________________________________
     // Signal's generator level kinematics
@@ -76,12 +80,21 @@ namespace Analysis
     LV gen_W_;
     LV gen_Z_;
     LV gen_H_;
+    LV gen_b0_;
+    LV gen_b1_;
+    LV gen_Wb0_;
+    LV gen_Wb1_;
 
     //_______________________________________________________
     // Reconstructed objects
     std::vector<Obj::Elec> elecs_;
     std::vector<Obj::Muon> muons_;
     std::vector<Obj::Jet> jets_;
+    std::vector<LV> leptons_;
+    std::vector<LV> VBFjets_;
+    std::vector<LV> bjets_;
+    std::vector<LV> Wbjets_;
+
 
     //_______________________________________________________
     // Set per event weight (normalized to 1/fb of data)
@@ -108,6 +121,7 @@ namespace Analysis
     {
         // Flags used in the anlaysis
         is_vbs_wzh_ = false;
+	is_hbb = false;
 
         // Signal's generator level kinematics
         gen_ijet_ = LV();
@@ -117,11 +131,20 @@ namespace Analysis
         gen_W_ = LV();
         gen_Z_ = LV();
         gen_H_ = LV();
+	gen_b0_ = LV();
+	gen_b1_ = LV();
+	gen_Wb0_ = LV();
+	gen_Wb1_ = LV();
+	
 
         // Reconstructed objects
         elecs_.clear();
         muons_.clear();
         jets_.clear();
+	leptons_.clear();
+	VBFjets_.clear();
+	bjets_.clear();
+	Wbjets_.clear();
 
     }
 
@@ -150,6 +173,32 @@ namespace Analysis
             gen_W_ = nt.GenPart_p4()[4];
             gen_Z_ = nt.GenPart_p4()[5];
             gen_H_ = nt.GenPart_p4()[6];
+	    // Select b quarks
+	    std::vector<LV> h_decay_p4s;
+	    std::vector<int> h_decay_pdgIds;
+            std::vector<int> h_decay_statuses;
+            int h_decay_id;
+            for (unsigned int igen = 0; igen < nt.GenPart_p4().size(); ++igen)
+            {
+		int imom = nt.GenPart_genPartIdxMother()[igen];
+		if (abs(nt.GenPart_pdgId()[imom]) == 25 and nt.GenPart_status()[imom] == 62)
+		{
+		    int pdgid = nt.GenPart_pdgId()[igen];
+		    int status = nt.GenPart_status()[igen];
+		    h_decay_p4s.push_back(nt.GenPart_p4()[igen]);
+		    h_decay_pdgIds.push_back(nt.GenPart_pdgId()[igen]);
+		    h_decay_statuses.push_back(nt.GenPart_status()[igen]);
+		}
+	    }
+	    if (abs(h_decay_pdgIds[0]) == 5)
+	    {
+		is_hbb = true;
+	    }
+	    if (is_hbb) 
+	    {
+		gen_b0_ = h_decay_p4s[0].pt() > h_decay_p4s[1].pt() ? h_decay_p4s[0] : h_decay_p4s[1];
+		gen_b1_ = h_decay_p4s[0].pt() > h_decay_p4s[1].pt() ? h_decay_p4s[1] : h_decay_p4s[0];
+	    }
         }
     }
 
@@ -166,7 +215,9 @@ namespace Analysis
                 this_elec.p4 = nt.Electron_p4()[iel];
                 this_elec.isTight = ttH::electronID(iel, ttH::IDtight, nt.year());
                 this_elec.jetIdx = nt.Electron_jetIdx()[iel];
+		this_elec.pdgid = nt.Electron_pdgId()[iel];
                 elecs_.push_back(this_elec);
+		leptons_.push_back(this_elec.p4);
             }
         }
     }
@@ -184,7 +235,9 @@ namespace Analysis
                 this_muon.p4 = nt.Muon_p4()[imu];
                 this_muon.isTight = ttH::muonID(imu, ttH::IDtight, nt.year());
                 this_muon.jetIdx = nt.Muon_jetIdx()[imu];
+		this_muon.pdgid = nt.Muon_pdgId()[imu];
                 muons_.push_back(this_muon);
+		leptons_.push_back(this_muon.p4);
             }
         }
     }
@@ -243,7 +296,7 @@ namespace Analysis
                 continue;
 
             // We keep jets above 20 GeV only
-            if (not (jet_p4.pt() > 20.))
+            if (not (jet_p4.pt() > 25.))
                 continue;
 
             Obj::Jet this_jet;
@@ -254,8 +307,79 @@ namespace Analysis
             jets_.push_back(this_jet);
 
         }
-
     }
+
+    // Select jet quarks
+    void classifyJet()
+    {
+	double largestEta1 = (jets_[0].p4).Eta();
+	double largestEta2 = (jets_[0].p4).Eta();
+	int VBFIndex1 = 0;
+	int VBFIndex2 = 0;
+	int bQIndex1 = 0;
+	int bQIndex2 = 0;
+	float largestBtagScore = jets_[0].isBtagScore;
+	float largerBtagScore = jets_[0].isBtagScore;	
+	for (unsigned int i = 0; i < jets_.size(); i++) {
+	    if (jets_[i].isBtagScore >= largestBtagScore) {
+		largerBtagScore = largestBtagScore;
+		bQIndex2 = bQIndex1;
+		largestBtagScore = jets_[i].isBtagScore;
+		bQIndex1 = i;
+	    }
+	    else if (jets_[i].isBtagScore < largestBtagScore && jets_[i].isBtagScore > largerBtagScore) {
+		bQIndex2 = i;
+		largerBtagScore = jets_[i].isBtagScore;
+	    }
+	}
+	for (unsigned int i = 0; i < jets_.size(); i++) {
+	    if (i != largestBtagScore && i != largerBtagScore) {
+		LV jeti = jets_[i].p4;
+		if (jeti.Eta() > 0 && jeti.Eta() >= largestEta1) {
+		    VBFIndex1 = i;
+		    largestEta1 = jeti.Eta();
+		}
+		else if (jeti.Eta() < largestEta2 && jeti.Eta() < 0) {
+		    VBFIndex2 = i;
+		    largestEta2 = jeti.Eta();
+		}
+	    }
+	} 
+	VBFjets_.push_back(jets_[VBFIndex1].p4);
+	VBFjets_.push_back(jets_[VBFIndex2].p4);
+	bjets_.push_back(jets_[bQIndex1].p4);
+	bjets_.push_back(jets_[bQIndex2].p4);
+	double largestpT = 0;
+	double largerpT = 0;
+	int Wbjet1;
+	int Wbjet2;
+	for (unsigned int i = 0; i <jets_.size(); i++) {
+	    if (i != VBFIndex1 && i != VBFIndex2 && i != bQIndex1 && i != bQIndex2) {
+		largestpT = (jets_[i].p4).Pt();
+		largerpT = (jets_[i].p4).Pt();
+		Wbjet1 = i;
+		Wbjet2 = i;
+		break;
+	    }
+	}
+	for (unsigned int j = 0; j <jets_.size(); j++) {
+	    if (j != VBFIndex1 && j != VBFIndex2 && j != bQIndex1 && j != bQIndex2) {
+		double jetpT = (jets_[j].p4).Pt();
+		if (jetpT >= largestpT) {
+		    largerpT = largestpT;
+		    Wbjet2 = Wbjet1;
+		    largestpT = jetpT;
+		    Wbjet1 = j;
+		}
+		else if (jetpT < largestpT && jetpT > largerpT) {
+		    Wbjet2 = j;
+		    largerpT = jetpT;
+		}
+	    }
+	}
+	Wbjets_.push_back(jets_[Wbjet1].p4);
+	Wbjets_.push_back(jets_[Wbjet2].p4);
+    } 
 
     //_______________________________________________________
     // Run the analysis for this event
@@ -334,14 +458,52 @@ namespace Hist
     TH1F* h_gen_ptZ_;
     TH1F* h_gen_ptW_;
     TH1F* h_gen_ptH_;
+
     // VBF quarks
     TH1F* h_gen_deltaEta_;
     TH1F* h_gen_massVBF_;
+
+    // b quarks
+    TH1F* h_gen_massbQsystem_;
+    TH1F* h_gen_ptb0_;
+    TH1F* h_gen_ptb1_;
+
+    // leptons_
+    TH1F* ptLep1;
+    TH1F* ptLep2;
+    TH1F* re_deltaEtaVBF;
+    TH1F* etaLep1;
+    TH1F* etaLep2;
+    TH1F* phiLep1;
+    TH1F* phiLep2;
+    TH1F* massDiLep;
+    TH1F* ptDiLep;
+    TH1F* dRLep; 
+
+    // jets
+    TH1F* etaVBFjets;
+    TH1F* ptVBFjets;
+    TH1F* VBFjetMass;
+    TH1F* ptB1;
+    TH1F* ptB2;
+    TH1F* BjetMass;
+    TH1F* BjetMass_400cut;
+    TH1F* ptWjet1;
+    TH1F* ptWjet2;
+    TH1F* WjetMass;
+    
+    // dR between reconstructed and gen-level
+    TH1F* dRleadingVBF;
+    TH1F* dRsubleadingbq;
+   
 
     //_______________________________________________________
     // Book the histograms
     void bookHistograms()
     {
+	// dR
+	dRleadingVBF = new TH1F("dRleadingVBF", "delta R of leading VBF quarks", 1080, 0, 5);
+	dRsubleadingbq = new TH1F("dRsubleadingbq", "delta R of subleading bottom quarks", 1080, 0, 5);
         // Pt's of the bosons
         h_gen_ptZ_ = new TH1F("h_gen_ptZ", "Transverse momentum of Z bosons", 1080, 0, 1800);
         h_gen_ptW_ = new TH1F("h_gen_ptW", "Transverse momentum of W bosons", 1080, 0, 1800);
@@ -349,32 +511,133 @@ namespace Hist
         // VBF quarks kinematics
         h_gen_deltaEta_ = new TH1F("h_gen_deltaEta", "Delta Eta of VBF quarks", 1080, 0, 10);
         h_gen_massVBF_ = new TH1F("h_gen_massVBF", "Invariant mass of VBF quark system", 1080, 0, 3500);
+	// bQ kinematics
+	h_gen_massbQsystem_ = new TH1F("h_gen_massbQsystem", "Mass of bottom quark system", 1080, 0, 200);
+	h_gen_ptb0_ = new TH1F("h_gen_ptb0", "pt of leading bottom quarks", 1080, 0, 400);
+	h_gen_ptb1_ = new TH1F("h_gen_ptb1", "pt of subleading bottom quarks", 1080, 0, 300);
+	// Leptons kinematics
+	ptLep1 = new TH1F("ptLep1", "pt of leading leptons_", 1080, 0, 600);
+	ptLep2 = new TH1F("ptLep2", "pt of subleading leptons_", 1080, 0, 500);
+	etaLep1 = new TH1F("etaLep1", "eta of leading leptons_", 1080, -5, 5);
+	etaLep2 = new TH1F("etaLep2", "eta of subleading leptons_", 1080, -5, 5);
+	phiLep1 = new TH1F("phiLep1", "phi of leading leptons_", 1080, -5, 5);
+	phiLep2 = new TH1F("phiLep2", "phi of subleading leptons_", 1080, -5, 5);
+	massDiLep = new TH1F("massDiLep", "mass of dileptons", 1080, 0, 250);
+	ptDiLep = new TH1F("ptDiLep", "pt of the dilepton system", 1080, 0, 1000);
+	dRLep = new TH1F("dRLep", "delta R between two leptons_", 1080, 0, 5);
+	// jets kinematics
+	etaVBFjets = new TH1F("etaVBFjets", "eta of VBF jets", 1080, -5, 5); 
+	re_deltaEtaVBF = new TH1F("re_deltaEtaVBF", "Delta Eta of VBF quarks (Reconstructed)", 1080, 0, 10);
+	ptVBFjets = new TH1F("ptVBFjets", "pt of VBF jets", 1080, 0, 500);
+	VBFjetMass = new TH1F("VBFjetMass", "Invariant mass of VBF quark system", 1080, 0, 3500);
+	ptB1 = new TH1F("ptB1", "pt of leading bottom quarks", 1080, 0, 400);
+	ptB2 = new TH1F("ptB2", "pt of subleading bottom quarks", 1080, 0, 300);
+	BjetMass = new TH1F("BjetMass", "Invariant mass of bottom quark system", 1080, 0, 300);
+	BjetMass_400cut = new TH1F("BjetMass_400cut", "Invariant mass of b quark system after the cut", 1080, 0, 300);
+	ptWjet1 = new TH1F("ptWjet1", "pt of leading jet quarks from W bosons", 1080, 0, 300);
+	ptWjet2 = new TH1F("ptWjet2", "pt of subleading jet quarks from W bosons", 1080, 0, 200);
+	WjetMass = new TH1F("WjetMass", "Invariant mass of jet quark system", 1080, 0, 100); 
     }
 
     //_______________________________________________________
-    // Fill the histograms
-    void fillHistograms()
+    // Fill Lepton histograms
+    void fillLeptonsKinematicHistograms()
     {
-        // Fill histograms
+	LV lep1 = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[0] : Analysis::leptons_[1];
+	LV lep2 = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[1] : Analysis::leptons_[0];
+	ptLep1->Fill(lep1.Pt(), Analysis::wgt_);
+	ptLep2->Fill(lep2.Pt(), Analysis::wgt_);
+	etaLep1->Fill(lep1.Eta(), Analysis::wgt_);
+	etaLep2->Fill(lep2.Eta(), Analysis::wgt_);
+	phiLep1->Fill(lep1.Phi(), Analysis::wgt_);
+	phiLep2->Fill(lep2.Phi(), Analysis::wgt_);
+	massDiLep->Fill((lep1+lep2).M(), Analysis::wgt_);
+	ptDiLep->Fill((lep1+lep2).Pt(), Analysis::wgt_);
+	dRLep->Fill(RooUtil::Calc::DeltaR(lep1, lep2), Analysis::wgt_);
+    }
+
+    void fillJetsKinematicHistograms()
+    {
+	LV b1 = (Analysis::bjets_[0]).Pt() > (Analysis::bjets_[1]).Pt() ? Analysis::bjets_[0] : Analysis::bjets_[1];
+	LV b2 = (Analysis::bjets_[0]).Pt() > (Analysis::bjets_[1]).Pt() ? Analysis::bjets_[1] : Analysis::bjets_[0];
+	LV wj1 = (Analysis::Wbjets_[0]).Pt() > (Analysis::Wbjets_[1]).Pt() ? Analysis::Wbjets_[0] : Analysis::Wbjets_[1];
+	LV wj2 = (Analysis::Wbjets_[0]).Pt() > (Analysis::Wbjets_[1]).Pt() ? Analysis::Wbjets_[1] : Analysis::Wbjets_[0];
+	LV VBF1 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[0] : Analysis::VBFjets_[1];
+	LV VBF2 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[1] : Analysis::VBFjets_[0];
+	ptB1->Fill(b1.Pt(), Analysis::wgt_);
+	ptB2->Fill(b2.Pt(), Analysis::wgt_);
+	BjetMass->Fill((b1+b2).M(), Analysis::wgt_);
+	ptWjet1->Fill(wj1.Pt(), Analysis::wgt_);
+	ptWjet2->Fill(wj2.Pt(), Analysis::wgt_);
+	WjetMass->Fill((wj1+wj2).M(), Analysis::wgt_);
+	for (unsigned int i = 0; i < 2; i++) {
+	    etaVBFjets->Fill(Analysis::VBFjets_[i].Eta(), Analysis::wgt_);
+	    ptVBFjets->Fill(Analysis::VBFjets_[i].Pt(), Analysis::wgt_);
+	}
+	re_deltaEtaVBF->Fill(TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()), Analysis::wgt_);
+	VBFjetMass->Fill((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M());
+	if ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() < 400) {
+	    BjetMass_400cut->Fill((b1+b2).M(), Analysis::wgt_);
+	}
+	dRleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet0_), Analysis::wgt_);
+	dRsubleadingbq->Fill(RooUtil::Calc::DeltaR(b2, Analysis::gen_b1_), Analysis::wgt_);
+    }
+    
+
+    // Fill gen-level histograms
+    void fillGenLevelHistograms()
+    {
         h_gen_massVBF_->Fill((Analysis::gen_ijet_ + Analysis::gen_jjet_).M(), Analysis::wgt_);
         h_gen_deltaEta_->Fill(TMath::Abs(Analysis::gen_ijet_.Eta() - Analysis::gen_jjet_.Eta()), Analysis::wgt_);
         h_gen_ptZ_->Fill(Analysis::gen_Z_.Pt(), Analysis::wgt_);
         h_gen_ptW_->Fill(Analysis::gen_W_.Pt(), Analysis::wgt_);
         h_gen_ptH_->Fill(Analysis::gen_H_.Pt(), Analysis::wgt_);
+	h_gen_massbQsystem_->Fill((Analysis::gen_b0_+Analysis::gen_b1_).M(), Analysis::wgt_); 
+	h_gen_ptb0_->Fill(Analysis::gen_b0_.Pt(), Analysis::wgt_);
+	h_gen_ptb1_->Fill(Analysis::gen_b1_.Pt(), Analysis::wgt_);
     }
+    
 
+ 
     //_______________________________________________________
     // Write the histograms
     void writeHistograms(TFile* ofile)
     {
         // Done with the analysis
         ofile->cd();
+	// Gen-level
+	h_gen_ptb0_->Write();
+	h_gen_ptb1_->Write();
+	h_gen_massbQsystem_->Write();
         h_gen_massVBF_->Write();
         h_gen_deltaEta_->Write();
         h_gen_ptH_->Write();
         h_gen_ptW_->Write();
         h_gen_ptZ_->Write();
-
+	// Reconstructed 
+	ptLep1->Write();
+	ptLep2->Write();
+	etaLep1->Write();
+	etaLep2->Write();
+	re_deltaEtaVBF->Write();
+	phiLep1->Write();
+	phiLep2->Write();
+	massDiLep->Write();
+	ptDiLep->Write();
+	dRLep->Write();
+	etaVBFjets->Write();
+	ptVBFjets->Write();
+	ptB1->Write();
+	ptB2->Write();
+	BjetMass->Write();
+	BjetMass_400cut->Write();
+	WjetMass->Write();
+	VBFjetMass->Write();
+	ptWjet1->Write();
+	ptWjet2->Write();
+	// dR
+	dRsubleadingbq->Write();
+	dRleadingVBF->Write();
     }
 
 }
@@ -401,7 +664,7 @@ int main()
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
 
-    // Set the luminosity
+    // Set the year 
     Analysis::setYear(2018); // TODO: Update properly in the future. For now it's a Placeholder!
 
     // Set up year dependent configuration of the analysis that are POG specific from CMS
@@ -411,7 +674,7 @@ int main()
     std::vector<TString> input_file_paths;
     for (unsigned i = 0; i < 26; i++)
     {
-        TString input_temp = "/hadoop/cms/store/user/phchang/VBSHWWSignalGeneration/UL18_VBSWZH_incl_C2V_4_Azure_v1/merged/output_" + std::to_string(i) + ".root";
+        TString input_temp = "/home/users/joytzphysics/WZH_files/output_" + std::to_string(i) + ".root";
         input_file_paths.push_back(input_temp);
         break;
     }
@@ -436,32 +699,40 @@ int main()
     // Initializer the looper
     looper.init(events_tchain, &nt, n_events);
 
-
     // Loop through events
     while (looper.nextEvent())
     {
 
+
         // Run the analysis algorithms (selections, computing variables, etc.)
         Analysis::runAlgorithms();
+	// Check if vbswzh
+	if (Analysis::is_vbs_wzh_ == false) { continue;}
+	// Check if hbb
+	if (Analysis::is_hbb == false) { continue;}
 
         // Fill the "counter" histogram
         Cutflow::fillCutflow(Cutflow::Cuts::kNoSelection);
 
         // Cut #1: Require that there are exactly two leptons
         if (not (Analysis::elecs_.size() + Analysis::muons_.size() == 2)) { continue; }
+	
+	// Fill Lepton Histogram
+	Hist::fillLeptonsKinematicHistograms();
 
         // Fill the "counter" histogram
         Cutflow::fillCutflow(Cutflow::Cuts::kTwoLightLeptons);
 
-        // Cut #2: Require that there are at least 4 pt > 20 GeV jets
-        if (not (Analysis::jets_.size() >= 4)) { continue; }
-
+        // Cut #2: Require that there are at least 6 pt > 20 GeV jets
+        if (not (Analysis::jets_.size() >= 6)) { continue; }
+	Analysis::classifyJet();
+	Hist::fillJetsKinematicHistograms();
         // Fill the "counter" histogram
         Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastFourPt20Jets);
 
         // All cuts have passed
         // Now fill the histograms
-        Hist::fillHistograms();
+        Hist::fillGenLevelHistograms();
 
     }
 
