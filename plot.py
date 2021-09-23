@@ -14,7 +14,7 @@ def plot(histname, xaxis_name):
             filter_pattern=histname,
             dogrep=False,
             extraoptions={
-                "nbins": 60,
+                "nbins": 15,
                 "lumi_value": 137,
                 #"ratio_range": [0., 100.],
                 #"legend_datalabel": "VBSWWH C_{2V}=4p5",
@@ -48,8 +48,10 @@ if __name__ == "__main__":
 	"ptDiLep",
 	"dRLep",
 	"h_cutflow",
-	"ptVBFjets",
-	"etaVBFjets",
+	"ptVBFjet1",
+	"ptVBFjet2",
+	"etaVBFjet2",
+	"etaVBFjet1",
 	"BjetMass",
 	"BjetMass_400cut",
 	"WjetMass",
@@ -59,7 +61,15 @@ if __name__ == "__main__":
 	"ptB1",
 	"ptB2",
 	"dRleadingVBF",
-	"dRsubleadingbq"
+	"dRsubleadingbq",
+	"dRleadingbq",
+	"dRsubleadingVBF",
+	"recombdRleadingbq",
+	"recombdRleadingVBF"
+	"etaVBFJet",
+	"ptHbb",
+	"etaHbb",
+	"massHbb",
     )
 	for name in hist_list:
 		plot(name, "GeV/c^2")
