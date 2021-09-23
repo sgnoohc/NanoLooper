@@ -310,14 +310,6 @@ namespace Analysis
                 }
             }
 
-            dR = 2*(125) /pt
-            dR ~0.6
-
-            pt  = 250 / 0.6
-
-
-
-
             // Overlap 
             // Then skip
             if (isOverlap)
