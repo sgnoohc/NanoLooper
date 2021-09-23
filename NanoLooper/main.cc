@@ -293,7 +293,7 @@ namespace Analysis
             bool isOverlap = false;
             for (unsigned int ilep = 0; ilep < elecs_.size(); ++ilep)
             {
-                if (elecs_[ilep].jetIdx == (int) ifatjet)
+                if (RooUtil::Calc::DeltaR(elecs_[ilep].p4, nt.FatJet_p4()[ifatjet]) < 0.8)
                 {
                     isOverlap = true;
                     break;
@@ -303,12 +303,20 @@ namespace Analysis
              // Overlap check against good muons
             for (unsigned int ilep = 0; ilep < muons_.size(); ++ilep)
             {
-                if (muons_[ilep].jetIdx == (int) ifatjet)
+                if (RooUtil::Calc::DeltaR(muons_[ilep].p4, nt.FatJet_p4()[ifatjet]) < 0.8)
                 {
                     isOverlap = true;
                     break;
                 }
             }
+
+            dR = 2*(125) /pt
+            dR ~0.6
+
+            pt  = 250 / 0.6
+
+
+
 
             // Overlap 
             // Then skip
