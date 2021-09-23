@@ -70,7 +70,7 @@ namespace Analysis
     Int_t year_;
 
     //_______________________________________________________
-    // Flags used in the anlaysis
+    // Flags used in the analysis
     bool is_vbs_wzh_;
     bool is_hbb;
     bool is_wjj;
@@ -98,7 +98,7 @@ namespace Analysis
     std::vector<LV> leptons_;
     std::vector<LV> VBFjets_;
     std::vector<LV> bjets_;
-    std::vector<LV> Wbjets_;
+    std::vector<LV> Wjets_;
 
     //________________________________________________________
     // Fat Jets reconstruction
@@ -155,7 +155,7 @@ namespace Analysis
         leptons_.clear();
         VBFjets_.clear();
         bjets_.clear();
-        Wbjets_.clear();
+        Wjets_.clear();
         hbbFatJet = LV(); 
 
     }
@@ -463,14 +463,14 @@ namespace Analysis
         bjets_.push_back(jets_[bQIndex2].p4);
         double largestpT = 0;
         double largerpT = 0;
-        int Wbjet1 = 0;
-        int Wbjet2 = 0;
+        int Wjet1 = 0;
+        int Wjet2 = 0;
         for (unsigned int i = 0; i <jets_.size(); i++) {
             if (i != VBFIndex1 && i != VBFIndex2 && i != bQIndex1 && i != bQIndex2) {
                 largestpT = (jets_[i].p4).Pt();
                 largerpT = (jets_[i].p4).Pt();
-                Wbjet1 = i;
-                Wbjet2 = i;
+                Wjet1 = i;
+                Wjet2 = i;
                 break;
             }
         }
@@ -479,18 +479,18 @@ namespace Analysis
                 double jetpT = (jets_[j].p4).Pt();
                 if (jetpT >= largestpT) {
                     largerpT = largestpT;
-                    Wbjet2 = Wbjet1;
+                    Wjet2 = Wjet1;
                     largestpT = jetpT;
-                    Wbjet1 = j;
+                    Wjet1 = j;
                 }
                 else if (jetpT < largestpT && jetpT > largerpT) {
-                    Wbjet2 = j;
+                    Wjet2 = j;
                     largerpT = jetpT;
                 }
             }
         }
-        Wbjets_.push_back(jets_[Wbjet1].p4);
-        Wbjets_.push_back(jets_[Wbjet2].p4);
+        Wjets_.push_back(jets_[Wjet1].p4);
+        Wjets_.push_back(jets_[Wjet2].p4);
     }
 
     //_______________________________________________________
@@ -717,8 +717,8 @@ namespace Hist
     {
         LV b1 = (Analysis::bjets_[0]).Pt() > (Analysis::bjets_[1]).Pt() ? Analysis::bjets_[0] : Analysis::bjets_[1];
         LV b2 = (Analysis::bjets_[0]).Pt() > (Analysis::bjets_[1]).Pt() ? Analysis::bjets_[1] : Analysis::bjets_[0];
-        LV wj1 = (Analysis::Wbjets_[0]).Pt() > (Analysis::Wbjets_[1]).Pt() ? Analysis::Wbjets_[0] : Analysis::Wbjets_[1];
-        LV wj2 = (Analysis::Wbjets_[0]).Pt() > (Analysis::Wbjets_[1]).Pt() ? Analysis::Wbjets_[1] : Analysis::Wbjets_[0];
+        LV wj1 = (Analysis::Wjets_[0]).Pt() > (Analysis::Wjets_[1]).Pt() ? Analysis::Wjets_[0] : Analysis::Wjets_[1];
+        LV wj2 = (Analysis::Wjets_[0]).Pt() > (Analysis::Wjets_[1]).Pt() ? Analysis::Wjets_[1] : Analysis::Wjets_[0];
         LV VBF1 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[0] : Analysis::VBFjets_[1];
         LV VBF2 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[1] : Analysis::VBFjets_[0];
         ptB1->Fill(b1.Pt(), Analysis::wgt_);
