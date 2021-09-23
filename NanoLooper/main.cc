@@ -102,7 +102,7 @@ namespace Analysis
 
     //________________________________________________________
     // Fat Jets reconstruction
-    LV hbbFatJet;
+    LV hbbFatJet_;
 
 
     //_______________________________________________________
@@ -156,7 +156,7 @@ namespace Analysis
         VBFjets_.clear();
         bjets_.clear();
         Wjets_.clear();
-        hbbFatJet = LV(); 
+        hbbFatJet_ = LV(); 
 
     }
 
@@ -326,7 +326,7 @@ namespace Analysis
                             nt.FatJet_msoftdrop()[ifatjet]);
             this_fatJet.p4 = RooUtil::Calc::getLV(p4);
             this_fatJet.hbbScore = nt.FatJet_deepTagMD_HbbvsQCD()[ifatjet];
-            this_fatJet.JetIdx = nt.FatJet_jetId()[ifatjet]; 
+            this_fatJet.JetIdx = -999;
             fatJets_.push_back(this_fatJet);
         }
         
@@ -339,7 +339,7 @@ namespace Analysis
                 maxhbbscore = fatJets_[ifatjet].hbbScore;
             }
         }
-        hbbFatJet = fatJets_[maxHbbNo].p4;
+        hbbFatJet_ = fatJets_[maxHbbNo].p4;
     }
 
 
@@ -428,45 +428,25 @@ namespace Analysis
         double largestEta2 = (jets_[0].p4).Eta();
         int VBFIndex1 = 0;
         int VBFIndex2 = 0;
-        int bQIndex1 = 0;
-        int bQIndex2 = 0;
-        float largestBtagScore = jets_[0].isBtagScore;
-        float largerBtagScore = jets_[0].isBtagScore;   
         for (unsigned int i = 0; i < jets_.size(); i++) {
-            if (jets_[i].isBtagScore >= largestBtagScore) {
-                largerBtagScore = largestBtagScore;
-                bQIndex2 = bQIndex1;
-                largestBtagScore = jets_[i].isBtagScore;
-                bQIndex1 = i;
+            LV jeti = jets_[i].p4;
+            if (jeti.Eta() > 0 && jeti.Eta() >= largestEta1) {
+                VBFIndex1 = i;
+                largestEta1 = jeti.Eta();
             }
-            else if (jets_[i].isBtagScore < largestBtagScore && jets_[i].isBtagScore > largerBtagScore) {
-                bQIndex2 = i;
-                largerBtagScore = jets_[i].isBtagScore;
-            }
-        }
-        for (unsigned int i = 0; i < jets_.size(); i++) {
-            if (i != largestBtagScore && i != largerBtagScore) {
-                LV jeti = jets_[i].p4;
-                if (jeti.Eta() > 0 && jeti.Eta() >= largestEta1) {
-                    VBFIndex1 = i;
-                    largestEta1 = jeti.Eta();
-                }
-                else if (jeti.Eta() < largestEta2 && jeti.Eta() < 0) {
-                    VBFIndex2 = i;
-                    largestEta2 = jeti.Eta();
-                }
+            else if (jeti.Eta() < largestEta2 && jeti.Eta() < 0) {
+                VBFIndex2 = i;
+                largestEta2 = jeti.Eta();
             }
         } 
         VBFjets_.push_back(jets_[VBFIndex1].p4);
         VBFjets_.push_back(jets_[VBFIndex2].p4);
-        bjets_.push_back(jets_[bQIndex1].p4);
-        bjets_.push_back(jets_[bQIndex2].p4);
         double largestpT = 0;
         double largerpT = 0;
         int Wjet1 = 0;
         int Wjet2 = 0;
         for (unsigned int i = 0; i <jets_.size(); i++) {
-            if (i != VBFIndex1 && i != VBFIndex2 && i != bQIndex1 && i != bQIndex2) {
+            if (i != VBFIndex1 && i != VBFIndex2) {
                 largestpT = (jets_[i].p4).Pt();
                 largerpT = (jets_[i].p4).Pt();
                 Wjet1 = i;
@@ -475,7 +455,7 @@ namespace Analysis
             }
         }
         for (unsigned int j = 0; j <jets_.size(); j++) {
-            if (j != VBFIndex1 && j != VBFIndex2 && j != bQIndex1 && j != bQIndex2) {
+            if (j != VBFIndex1 && j != VBFIndex2) {
                 double jetpT = (jets_[j].p4).Pt();
                 if (jetpT >= largestpT) {
                     largerpT = largestpT;
@@ -617,6 +597,7 @@ namespace Hist
     TH1F* dRsubleadingVBF;
     TH1F* dRsubleadingbq;
     TH1F* dRleadingbq;
+    TH1F* dRhiggs;
 
     // Recombination of VBF
     TH1F* recombdRleadingVBF;
@@ -626,6 +607,11 @@ namespace Hist
     TH1F* ptHbb;
     TH1F* etaHbb;
     TH1F* massHbb;
+    TH1F* nFatjets;
+
+    // s-hat variable
+    TH1F* massZH;
+    TH1F* massZHzoom;
 
     //_______________________________________________________
     // Book the histograms
@@ -639,6 +625,7 @@ namespace Hist
         dRsubleadingbq = new TH1F("dRsubleadingbq", "delta R of subleading bottom quarks", 1080, 0, 5);
         dRsubleadingVBF = new TH1F("dRsubleadingVBF", "delta R of subleading VBF quarks", 1080, 0, 5);
         dRleadingbq = new TH1F("dRleadingbq", "delta R of leading bottom quarks", 1080, 0, 5);
+        dRhiggs = new TH1F("dRhiggs", "delta R of gen higgs and tagged reco hbbfatjet", 1080, 0, 5);
         // Pt's of the bosons
         h_gen_ptZ_ = new TH1F("h_gen_ptZ", "Transverse momentum of Z bosons", 1080, 0, 1800);
         h_gen_ptW_ = new TH1F("h_gen_ptW", "Transverse momentum of W bosons", 1080, 0, 1800);
@@ -658,7 +645,7 @@ namespace Hist
         phiLep1 = new TH1F("phiLep1", "phi of leading leptons_", 1080, -5, 5);
         phiLep2 = new TH1F("phiLep2", "phi of subleading leptons_", 1080, -5, 5);
         massDiLep = new TH1F("massDiLep", "mass of dileptons", 1080, 0, 250);
-        ptDiLep = new TH1F("ptDiLep", "pt of the dilepton system", 1080, 0, 1000);
+        ptDiLep = new TH1F("ptDiLep", "pt of the dilepton system", 1080, 0, 1800);
         dRLep = new TH1F("dRLep", "delta R between two leptons_", 1080, 0, 5);
 
         // jets kinematics
@@ -678,18 +665,25 @@ namespace Hist
 
         //______________________________________________________
         // fatJets Kinematics
-        ptHbb = new TH1F("ptHbb", "pt of Hbb fatjet", 1080, 0, 800);
+        ptHbb = new TH1F("ptHbb", "pt of Hbb fatjet", 1080, 0, 1800);
         etaHbb = new TH1F("etaHbb", "eta of Hbb fatjet", 1080, -5, 5);
         massHbb = new TH1F("massHbb", "mass of Hbb fatjet", 1080, 0, 200);
+        nFatjets = new TH1F("nFatjets", "Number of fatjets", 5, 0, 5);
+
+        //_______________________________________________________
+        // s-hat variable
+        massZH = new TH1F("massZH", "Invariant mass of the ZH system", 1080, 0, 3500);
+        massZHzoom = new TH1F("massZHzoom", "Invariant mass of the ZH system", 1080, 0, 500);
     }
 
     //_______________________________________________________
     // Fill fatjet Histograms
     void fillHbbFatJetKinematicHistograms()
     {
-        ptHbb->Fill(Analysis::hbbFatJet.Pt(), Analysis::wgt_);
-        etaHbb->Fill(Analysis::hbbFatJet.Eta(), Analysis::wgt_);
-        massHbb->Fill(Analysis::hbbFatJet.M(), Analysis::wgt_);
+        ptHbb->Fill(Analysis::hbbFatJet_.Pt(), Analysis::wgt_);
+        etaHbb->Fill(Analysis::hbbFatJet_.Eta(), Analysis::wgt_);
+        massHbb->Fill(Analysis::hbbFatJet_.M(), Analysis::wgt_);
+        nFatjets->Fill(Analysis::fatJets_.size(), Analysis::wgt_);
     }
 
 
@@ -715,15 +709,10 @@ namespace Hist
 
     void fillJetsKinematicHistograms()
     {
-        LV b1 = (Analysis::bjets_[0]).Pt() > (Analysis::bjets_[1]).Pt() ? Analysis::bjets_[0] : Analysis::bjets_[1];
-        LV b2 = (Analysis::bjets_[0]).Pt() > (Analysis::bjets_[1]).Pt() ? Analysis::bjets_[1] : Analysis::bjets_[0];
         LV wj1 = (Analysis::Wjets_[0]).Pt() > (Analysis::Wjets_[1]).Pt() ? Analysis::Wjets_[0] : Analysis::Wjets_[1];
         LV wj2 = (Analysis::Wjets_[0]).Pt() > (Analysis::Wjets_[1]).Pt() ? Analysis::Wjets_[1] : Analysis::Wjets_[0];
         LV VBF1 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[0] : Analysis::VBFjets_[1];
         LV VBF2 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[1] : Analysis::VBFjets_[0];
-        ptB1->Fill(b1.Pt(), Analysis::wgt_);
-        ptB2->Fill(b2.Pt(), Analysis::wgt_);
-        BjetMass->Fill((b1+b2).M(), Analysis::wgt_);
         ptWjet1->Fill(wj1.Pt(), Analysis::wgt_);
         ptWjet2->Fill(wj2.Pt(), Analysis::wgt_);
         WjetMass->Fill((wj1+wj2).M(), Analysis::wgt_);
@@ -736,29 +725,20 @@ namespace Hist
 
         re_deltaEtaVBF->Fill(TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()), Analysis::wgt_);
         VBFjetMass->Fill((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M());
-        if ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() < 400) {
-            BjetMass_400cut->Fill((b1+b2).M(), Analysis::wgt_);
-        }
-        // dR between reco- and gen- level
-        dRleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet0_), Analysis::wgt_);
-        dRsubleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF2, Analysis::gen_jet1_), Analysis::wgt_);
-        dRsubleadingbq->Fill(RooUtil::Calc::DeltaR(b2, Analysis::gen_b1_), Analysis::wgt_);
-        dRleadingbq->Fill(RooUtil::Calc::DeltaR(b1, Analysis::gen_b0_), Analysis::wgt_);
-        
-        // Recombination
-        if (RooUtil::Calc::DeltaR(b1, Analysis::gen_b0_) > RooUtil::Calc::DeltaR(b2, Analysis::gen_b0_)) {
-            recombdRleadingbq->Fill(RooUtil::Calc::DeltaR(b2, Analysis::gen_b0_), Analysis::wgt_);
-        }
-        else {
-            recombdRleadingbq->Fill(RooUtil::Calc::DeltaR(b1, Analysis::gen_b0_), Analysis::wgt_);
-        }
-        if (RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet0_) > RooUtil::Calc::DeltaR(VBF2, Analysis::gen_jet0_)) {
-            recombdRleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF2, Analysis::gen_jet0_), Analysis::wgt_);
-        }
-        else {
-            recombdRleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet0_), Analysis::wgt_);
-        }
 
+        // Figuring out which combination of VBF jets is good
+        float dR11 = RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet0_);
+        float dR22 = RooUtil::Calc::DeltaR(VBF2, Analysis::gen_jet1_);
+        float dR12 = RooUtil::Calc::DeltaR(VBF2, Analysis::gen_jet0_);
+        float dR21 = RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet1_);
+
+        LV VBF1_matched = dR11 + dR22 < dR12 + dR21 ? VBF1 : VBF2;
+        LV VBF2_matched = dR11 + dR22 < dR12 + dR21 ? VBF2 : VBF1;
+
+        // dR between reco- and gen- level
+        dRleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF1_matched, Analysis::gen_jet0_), Analysis::wgt_);
+        dRsubleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF2_matched, Analysis::gen_jet1_), Analysis::wgt_);
+        dRhiggs->Fill(RooUtil::Calc::DeltaR(Analysis::hbbFatJet_, Analysis::gen_H_), Analysis::wgt_);
 
     }
     
@@ -774,6 +754,13 @@ namespace Hist
         h_gen_massbQsystem_->Fill((Analysis::gen_b0_+Analysis::gen_b1_).M(), Analysis::wgt_); 
         h_gen_ptb0_->Fill(Analysis::gen_b0_.Pt(), Analysis::wgt_);
         h_gen_ptb1_->Fill(Analysis::gen_b1_.Pt(), Analysis::wgt_);
+    }
+
+    // Fill s-hat kinematic variables
+    void fillSHatHistograms()
+    {
+        massZH->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
+        massZHzoom->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
     }
     
 
@@ -823,6 +810,10 @@ namespace Hist
         ptHbb->Write();
         etaHbb->Write();
         massHbb->Write();
+        nFatjets->Write();
+        massZH->Write();
+        massZHzoom->Write();
+        dRhiggs->Write();
     }
 
 }
@@ -832,9 +823,9 @@ namespace Hist
 
         
         
-    //====================================================================
-    // Main function
-    //====================================================================
+//====================================================================
+// Main function
+//====================================================================
 int main() 
 {
     // Create your output root file
@@ -847,7 +838,7 @@ int main()
     Cutflow::bookCutflow();
 
     // Set scale 1fb (the per event weight normalized for 1/fb)
-    Analysis::setScale1fb(0.0006012);
+    Analysis::setScale1fb(0.00001747865363); // 11.23 fb / (# of events = 642498)
 
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
@@ -864,7 +855,6 @@ int main()
     {
         TString input_temp = "/home/users/joytzphysics/WZH_files/output_" + std::to_string(i) + ".root";
         input_file_paths.push_back(input_temp);
-        break;
     }
 
     // Use RooUtil::StringUtil to concatenate the input file paths
@@ -923,6 +913,22 @@ int main()
 
         // Cut#4: Require that there are exactly two leptons
         if (not (Analysis::elecs_.size() + Analysis::muons_.size() == 2)) { continue; }
+        // Cut#4: Require that the two leptons have SFOS (same-flavor opposite-sign)
+        if (not (Analysis::elecs_.size() == 2 or Analysis::muons_.size() == 2)) { continue; }
+        int is_os = false;
+        if (Analysis::elecs_.size() == 2)
+        {
+            is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
+        }
+        else if (Analysis::muons_.size() == 2)
+        {
+            is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
+        }
+        else
+        {
+            std::cout << "ERROR: I should never be here" << std::endl;
+        }
+        if (not (is_os)) { continue; }
         cut4_events ++; 
         // Fill the "counter" histogram
         Cutflow::fillCutflow(Cutflow::Cuts::kTwoLightLeptons);
@@ -947,6 +953,7 @@ int main()
         // All cuts have passed
         // Now fill the histograms
         Hist::fillGenLevelHistograms();
+        Hist::fillSHatHistograms();
 
     }
 
