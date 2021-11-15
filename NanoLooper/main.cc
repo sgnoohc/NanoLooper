@@ -831,7 +831,7 @@ namespace Hist
 int main() 
 {
     // Create your output root file
-    TFile* output_file = new TFile("VBSWWHoutput.root", "recreate");
+    TFile* output_file = new TFile("VBSZZHoutput.root", "recreate");
 
     // Create Histograms
     Hist::bookHistograms();
@@ -840,7 +840,7 @@ int main()
     Cutflow::bookCutflow();
 
     // Set scale 1fb (the per event weight normalized for 1/fb)
-    Analysis::setScale1fb(3.559/637750); // 11.23 fb / (# of events = 642498)
+    Analysis::setScale1fb(2.994/641998); // 11.23 fb / (# of events = 642498)
 
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
@@ -855,7 +855,7 @@ int main()
     std::vector<TString> input_file_paths;
     for (unsigned i = 0; i < 26; i++)
     {
-        TString input_temp = "/home/users/joytzphysics/VBSWWH_C2V_3/output_" + std::to_string(i) + ".root";
+        TString input_temp = "/home/users/joytzphysics/VBSZZH_C2V_3/output_" + std::to_string(i) + ".root";
         input_file_paths.push_back(input_temp);
     }
 
