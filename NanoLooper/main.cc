@@ -239,7 +239,7 @@ namespace Analysis
 //                    gen_Wb1_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[1] : w_decay_p4s[0];
 //                }
 //            }
-//        }
+        }
     }
 
     
@@ -750,8 +750,8 @@ namespace Hist
     {
         h_gen_massVBF_->Fill((Analysis::gen_ijet_ + Analysis::gen_jjet_).M(), Analysis::wgt_);
         h_gen_deltaEta_->Fill(TMath::Abs(Analysis::gen_ijet_.Eta() - Analysis::gen_jjet_.Eta()), Analysis::wgt_);
-        for (unsigned int j = 0; j < gen_Z_.size(); j++) {h_gen_ptZ_->Fill(Analysis::gen_Z_[j].Pt(), Analysis::wgt_);}
-        for (unsigned int i = 0; i < gen_W_.size(); i++) { h_gen_ptW_->Fill(Analysis::gen_W_[i].Pt(), Analysis::wgt_);}
+        for (unsigned int j = 0; j < Analysis::gen_Z_.size(); j++) { h_gen_ptZ_->Fill(Analysis::gen_Z_[j].Pt(), Analysis::wgt_);}
+        for (unsigned int i = 0; i < Analysis::gen_W_.size(); i++) { h_gen_ptW_->Fill(Analysis::gen_W_[i].Pt(), Analysis::wgt_);}
         h_gen_ptH_->Fill(Analysis::gen_H_.Pt(), Analysis::wgt_);
         h_gen_massbQsystem_->Fill((Analysis::gen_b0_+Analysis::gen_b1_).M(), Analysis::wgt_); 
         h_gen_ptb0_->Fill(Analysis::gen_b0_.Pt(), Analysis::wgt_);
@@ -831,7 +831,7 @@ namespace Hist
 int main() 
 {
     // Create your output root file
-    TFile* output_file = new TFile("VBSOSWWHoutput.root", "recreate");
+    TFile* output_file = new TFile("VBSWWHoutput.root", "recreate");
 
     // Create Histograms
     Hist::bookHistograms();
@@ -840,7 +840,7 @@ int main()
     Cutflow::bookCutflow();
 
     // Set scale 1fb (the per event weight normalized for 1/fb)
-    Analysis::setScale1fb(5.652/645745); // 11.23 fb / (# of events = 642498)
+    Analysis::setScale1fb(3.559/637750); // 11.23 fb / (# of events = 642498)
 
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
@@ -855,7 +855,7 @@ int main()
     std::vector<TString> input_file_paths;
     for (unsigned i = 0; i < 26; i++)
     {
-        TString input_temp = "/home/users/joytzphysics/VBSOSWWH_C2V_3/output_" + std::to_string(i) + ".root";
+        TString input_temp = "/home/users/joytzphysics/VBSWWH_C2V_3/output_" + std::to_string(i) + ".root";
         input_file_paths.push_back(input_temp);
     }
 
@@ -945,7 +945,7 @@ int main()
         Cutflow::fillCutflow(Cutflow::Cuts::kOneHbbFatJet);
 	// Cut#5: Require the Hbb score > 0.5
 	int no_Hbb = 0;
-	for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+	for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
             if (Analysis::fatJets_[ifatjet].hbbScore >= 0.5) { no_Hbb += 1; }
 	}
 	if (no_Hbb = 0) { continue; }
@@ -958,7 +958,7 @@ int main()
         Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastTwoPt30Jets);
 
 	// Cut#7: Require mjj > 500, deltaEtajj > 3
-	if (not (Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500) { continue;}
+	if (not ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500)) { continue;}
 	if (not (TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()) > 3)) { continue;}
 	Cutflow::fillCutflow(Cutflow::Cuts::kMjj);
 

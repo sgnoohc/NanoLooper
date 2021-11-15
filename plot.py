@@ -6,11 +6,11 @@ def plot(histname, xaxis_name):
 
     p.dump_plot(
         # reference frame (with lower value)
-            fnames=["output.root"],
+            fnames=["VBSOSWWHoutput.root"],
             # with larger value
             # data_fname="/home/users/joytzphysics/plots/VBSWWH_4p51.root",
             # sig_fnames=["VBSWWH_11.root"],
-            legend_labels=["VBSWZH"],
+            # legend_labels=["VBSWZH"],
             filter_pattern=histname,
             dogrep=False,
             extraoptions={
