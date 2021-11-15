@@ -71,9 +71,9 @@ namespace Analysis
 
     //_______________________________________________________
     // Flags used in the analysis
-    bool is_vbs_wzh_;
+    bool is_vbs;
     bool is_hbb;
-    bool is_wjj;
+//    bool is_wjj;
 
     //_______________________________________________________
     // Signal's generator level kinematics
@@ -81,8 +81,8 @@ namespace Analysis
     LV gen_jjet_;
     LV gen_jet0_;
     LV gen_jet1_;
-    LV gen_W_;
-    LV gen_Z_;
+    std::vector<LV> gen_W_;
+    std::vector<LV> gen_Z_;
     LV gen_H_;
     LV gen_b0_;
     LV gen_b1_;
@@ -94,16 +94,16 @@ namespace Analysis
     std::vector<Obj::Elec> elecs_;
     std::vector<Obj::Muon> muons_;
     std::vector<Obj::Jet> jets_;
-    std::vector<Obj::Jet> fatJets_;
-    std::vector<LV> leptons_;
+   std::vector<LV> leptons_;
     std::vector<LV> VBFjets_;
     std::vector<LV> bjets_;
     std::vector<LV> Wjets_;
 
     //________________________________________________________
     // Fat Jets reconstruction
+    std::vector<Obj::Jet> fatJets_;
     LV hbbFatJet_;
-
+ 
 
     //_______________________________________________________
     // Set per event weight (normalized to 1/fb of data)
@@ -129,17 +129,15 @@ namespace Analysis
     void clearAnalysisVariables()
     {
         // Flags used in the anlaysis
-        is_vbs_wzh_ = false;
+        is_vbs = false;
         is_hbb = false;
-        is_wjj = false;
+//        is_wjj = false;
 
         // Signal's generator level kinematics
         gen_ijet_ = LV();
         gen_jjet_ = LV();
         gen_jet0_ = LV();
         gen_jet1_ = LV();
-        gen_W_ = LV();
-        gen_Z_ = LV();
         gen_H_ = LV();
         gen_b0_ = LV();
         gen_b1_ = LV();
@@ -148,6 +146,8 @@ namespace Analysis
         
 
         // Reconstructed objects
+        gen_W_.clear();
+	gen_Z_.clear();
         elecs_.clear();
         muons_.clear();
         jets_.clear();
@@ -174,18 +174,19 @@ namespace Analysis
     // Compute signal generator level kinematics
     void computeSignalGeneratorLevelKinematics()
     {
-        is_vbs_wzh_ = nt.GenPart_status()[2] == 23;
-        if (is_vbs_wzh_)
+        is_vbs = nt.GenPart_status()[2] == 23;
+        if (is_vbs)
         {
             // LV ordered [NObjects];
             gen_ijet_ = nt.GenPart_p4()[2];
             gen_jjet_ = nt.GenPart_p4()[3];
             gen_jet0_ = gen_ijet_.pt() > gen_jjet_.pt() ? gen_ijet_ : gen_jjet_;
             gen_jet1_ = gen_ijet_.pt() > gen_jjet_.pt() ? gen_jjet_ : gen_ijet_;
-            gen_W_ = nt.GenPart_p4()[4];
-            gen_Z_ = nt.GenPart_p4()[5];
-            gen_H_ = nt.GenPart_p4()[6];
-
+	    for (unsigned int i = 0; i < 7; ++i) {
+		if (abs(nt.GenPart_pdgId()[i] == 24)) { gen_W_.push_back(nt.GenPart_p4()[i]);}
+		if (abs(nt.GenPart_pdgId()[i] == 23)) { gen_Z_.push_back(nt.GenPart_p4()[i]);}
+		if (abs(nt.GenPart_pdgId()[i] == 25)) { gen_H_ = nt.GenPart_p4()[i];} 
+	    }
             // Select b quarks and hbb
             std::vector<LV> h_decay_p4s;
             std::vector<int> h_decay_pdgIds;
@@ -228,17 +229,17 @@ namespace Analysis
                     // w_decay_statuses.push_back(nt.GenPart_status()[igen]);
                 }
             }
-            if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
-                is_wjj = true;
-            }
-            if (is_wjj) 
-            {
-                if (w_decay_p4s.size() == 2) {
-                    gen_Wb0_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[0] : w_decay_p4s[1];
-                    gen_Wb1_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[1] : w_decay_p4s[0];
-                }
-            }
-        }
+//            if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
+//                is_wjj = true;
+//            }
+//            if (is_wjj) 
+//            {
+//                if (w_decay_p4s.size() == 2) {
+//                    gen_Wb0_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[0] : w_decay_p4s[1];
+//                    gen_Wb1_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[1] : w_decay_p4s[0];
+//                }
+//            }
+//        }
     }
 
     
@@ -405,8 +406,8 @@ namespace Analysis
             if (isOverlap)
                 continue;
 
-            // We keep jets above 20 GeV only
-            if (not (jet_p4.pt() > 20.))
+            // We keep jets above 30 GeV only
+            if (not (jet_p4.pt() > 30.))
                 continue;
 
             Obj::Jet this_jet;
@@ -511,12 +512,13 @@ namespace Cutflow
     enum Cuts
     {
         kNoSelection = 0,
-        kVbswzh,
+        kVbs,
         kHbb,
-        kWjj,
         kTwoLightLeptons,
         kOneHbbFatJet,
-        kAtLeastFourPt20Jets,
+	kHbbScore,
+        kAtLeastTwoPt30Jets,
+	kMjj,
         kNCuts,
     };
 
@@ -748,8 +750,8 @@ namespace Hist
     {
         h_gen_massVBF_->Fill((Analysis::gen_ijet_ + Analysis::gen_jjet_).M(), Analysis::wgt_);
         h_gen_deltaEta_->Fill(TMath::Abs(Analysis::gen_ijet_.Eta() - Analysis::gen_jjet_.Eta()), Analysis::wgt_);
-        h_gen_ptZ_->Fill(Analysis::gen_Z_.Pt(), Analysis::wgt_);
-        h_gen_ptW_->Fill(Analysis::gen_W_.Pt(), Analysis::wgt_);
+        for (unsigned int j = 0; j < gen_Z_.size(); j++) {h_gen_ptZ_->Fill(Analysis::gen_Z_[j].Pt(), Analysis::wgt_);}
+        for (unsigned int i = 0; i < gen_W_.size(); i++) { h_gen_ptW_->Fill(Analysis::gen_W_[i].Pt(), Analysis::wgt_);}
         h_gen_ptH_->Fill(Analysis::gen_H_.Pt(), Analysis::wgt_);
         h_gen_massbQsystem_->Fill((Analysis::gen_b0_+Analysis::gen_b1_).M(), Analysis::wgt_); 
         h_gen_ptb0_->Fill(Analysis::gen_b0_.Pt(), Analysis::wgt_);
@@ -829,7 +831,7 @@ namespace Hist
 int main() 
 {
     // Create your output root file
-    TFile* output_file = new TFile("output.root", "recreate");
+    TFile* output_file = new TFile("VBSOSWWHoutput.root", "recreate");
 
     // Create Histograms
     Hist::bookHistograms();
@@ -838,7 +840,7 @@ int main()
     Cutflow::bookCutflow();
 
     // Set scale 1fb (the per event weight normalized for 1/fb)
-    Analysis::setScale1fb(0.00001747865363); // 11.23 fb / (# of events = 642498)
+    Analysis::setScale1fb(5.652/645745); // 11.23 fb / (# of events = 642498)
 
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
@@ -853,7 +855,7 @@ int main()
     std::vector<TString> input_file_paths;
     for (unsigned i = 0; i < 26; i++)
     {
-        TString input_temp = "/home/users/joytzphysics/WZH_files/output_" + std::to_string(i) + ".root";
+        TString input_temp = "/home/users/joytzphysics/VBSOSWWH_C2V_3/output_" + std::to_string(i) + ".root";
         input_file_paths.push_back(input_temp);
     }
 
@@ -898,23 +900,22 @@ int main()
         // Fill the "counter" histogram
         Cutflow::fillCutflow(Cutflow::Cuts::kNoSelection);
 
-        // Cut#1: Check if vbswzh
-        if (Analysis::is_vbs_wzh_ == false) { continue;}
+        // Cut#1: Check if vbs
+        if (Analysis::is_vbs == false) { continue;}
         cut1_events ++;
-        Cutflow::fillCutflow(Cutflow::Cuts::kVbswzh);
+        Cutflow::fillCutflow(Cutflow::Cuts::kVbs);
         // Cut#2: Check if hbb
         if (Analysis::is_hbb == false) { continue;}
         cut2_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kHbb);
         // Cut#3: Check if wjj
-        if (Analysis::is_wjj == false) { continue;}
-        cut3_events ++;
-        Cutflow::fillCutflow(Cutflow::Cuts::kWjj);
+//        if (Analysis::is_wjj == false) { continue;}
+//        cut3_events ++;
+//        Cutflow::fillCutflow(Cutflow::Cuts::kWjj);
 
-        // Cut#4: Require that there are exactly two leptons
+        // Cut#3: Require that there are exactly two leptons
         if (not (Analysis::elecs_.size() + Analysis::muons_.size() == 2)) { continue; }
-        // Cut#4: Require that the two leptons have SFOS (same-flavor opposite-sign)
-        if (not (Analysis::elecs_.size() == 2 or Analysis::muons_.size() == 2)) { continue; }
+        // Cut#3: Require that the two leptons have OS (opposite-sign)
         int is_os = false;
         if (Analysis::elecs_.size() == 2)
         {
@@ -924,37 +925,53 @@ int main()
         {
             is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
         }
-        else
-        {
-            std::cout << "ERROR: I should never be here" << std::endl;
-        }
+        else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
+	{
+	    is_os = Analysis::muons_[0].pdgid * Analysis::elecs_[0].pdgid < 0;
+	}
+
         if (not (is_os)) { continue; }
-        cut4_events ++; 
-        // Fill the "counter" histogram
+	// Cut#3: Require that the leading leptons Pt >= 40, subleading >= 30
+        LV leading = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[0] : Analysis::leptons_[1];
+        LV subleading = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[1] : Analysis::leptons_[0];
+        
+	if (not (leading.Pt() >= 40 && subleading.Pt() >= 30)) {continue;}
         Cutflow::fillCutflow(Cutflow::Cuts::kTwoLightLeptons);
+        cut3_events ++; 
 
-        // Cut#5: Require at least one fatjet with softdropmass > 40 GeV
+        // Cut#4: Require at least one fatjet with softdropmass > 40 GeV
         if (not (Analysis::fatJets_.size() >= 1 ) ) { continue;}
-        cut5_events ++;
+        cut4_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kOneHbbFatJet);
-        // Cut#6: Require that there are at least 6 pt > 20 GeV jets
-        if (not (Analysis::jets_.size() >= 6)) { continue; }
+	// Cut#5: Require the Hbb score > 0.5
+	int no_Hbb = 0;
+	for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+            if (Analysis::fatJets_[ifatjet].hbbScore >= 0.5) { no_Hbb += 1; }
+	}
+	if (no_Hbb = 0) { continue; }
+	cut5_events ++;
+	Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
+        // Cut#6: Require that there are at least 2 pt > 30 GeV jets
+        
+        if (not (Analysis::jets_.size() >= 2)) { continue; }
         cut6_events ++;
+        Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastTwoPt30Jets);
 
-        Hist::fillJetsKinematicHistograms();
-        Hist::fillHbbFatJetKinematicHistograms();
-        // Fill Lepton Histogram
+	// Cut#7: Require mjj > 500, deltaEtajj > 3
+	if (not (Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500) { continue;}
+	if (not (TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()) > 3)) { continue;}
+	Cutflow::fillCutflow(Cutflow::Cuts::kMjj);
+
+        // Fill Lepton Histogram;
         Hist::fillLeptonsKinematicHistograms();
-
-
-        // Fill the "counter" histogram
-        Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastFourPt20Jets);
 
         // All cuts have passed
         // Now fill the histograms
         Hist::fillGenLevelHistograms();
         Hist::fillSHatHistograms();
-
+        Hist::fillJetsKinematicHistograms();
+        Hist::fillHbbFatJetKinematicHistograms();
+ 
     }
 
     // Write out the histograms
