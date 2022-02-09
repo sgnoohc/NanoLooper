@@ -18,7 +18,9 @@ Compile the code
 
 Run the looper
 
-    ./runNanoLooper
+    sh run.sh
+    sh hadd.sh
+    python plot.py
 
 Examine the code
 
