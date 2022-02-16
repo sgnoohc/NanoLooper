@@ -6,11 +6,12 @@ def plot(histname, xaxis_name):
 
     p.dump_plot(
         # reference frame (with lower value)
-            fnames=["VBSOSWWHoutput.root"],
+            fnames=["ttbaroutput.root"],
             # with larger value
             # data_fname="/home/users/joytzphysics/plots/VBSWWH_4p51.root",
-            # sig_fnames=["VBSWWH_11.root"],
-            # legend_labels=["VBSWZH"],
+            sig_fnames=["VBSWZHoutput.root"],
+            legend_labels=["t#bar{t}"],
+            signal_labels=["VBSWZH C_{2V}=3"],
             filter_pattern=histname,
             dogrep=False,
             extraoptions={
@@ -23,25 +24,17 @@ def plot(histname, xaxis_name):
                 "xaxis_ndivisions":503,
                 #"ratio_name": "C_{2V}=4p5 / C_{2V}=1",
                 #"ratio_xaxis_title":xaxis_name,
-        "print_yield":True
+                "print_yield":True,
+                "yield_prec":4,
                 },
     )
 
 if __name__ == "__main__":
 
-    hist_list = ("h_gen_ptZ",
-                 "h_gen_ptW",
-                 "h_gen_ptH",
-                 "h_gen_deltaEta",
-                 "h_gen_massVBF",
-                 "h_gen_massbQsystem",
-                 "h_gen_ptb0",
-                 "h_gen_ptb1",
-                 "ptLep1",
+    hist_list = ("ptLep1",
                  "ptLep2",
                  "etaLep1",
                  "etaLep2",
-                 "re_deltaEtaVBF",
                  "phiLep1",
                  "phiLep2",
                  "massDiLep",
@@ -58,15 +51,16 @@ if __name__ == "__main__":
                  "ptWjet2",
                  "dRleadingVBF",
                  "dRsubleadingVBF",
-                 "recombdRleadingVBF"
                  "etaVBFJet",
                  "ptHbb",
                  "etaHbb",
                  "massHbb",
-                 "massZH",
-                 "massZHzoom",
                  "nFatjets",
+                 "wjjScore",
+                 "hbbScore",
                  "dRhiggs",
+                 "ptWjj",
+                 "etaWjj",
                  )
     for name in hist_list:
         plot(name, "GeV/c^2")

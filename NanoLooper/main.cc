@@ -5,6 +5,8 @@
 #include "MuonSelections.h" // Contains the definitions of ttH::muonID
 #include "Config.h" // Contains the definitions of gconf
 #include "rooutil.h" // Contains the definitions of various help functions that start with "RooUtil"
+#include "cxxopts.h" // Contains how to parse argc and argv 
+
 
 //=================================================================================================
 // Objects
@@ -39,6 +41,7 @@ namespace Obj
         LV p4;
         int JetIdx; // Overlapping jet index
         float hbbScore;
+        float wjjScore;
         float isBtagScore;
         int isBtagTight;
         int isBtagLoose;
@@ -73,7 +76,7 @@ namespace Analysis
     // Flags used in the analysis
     bool is_vbs;
     bool is_hbb;
-//    bool is_wjj;
+    bool is_wjj;
 
     //_______________________________________________________
     // Signal's generator level kinematics
@@ -94,7 +97,7 @@ namespace Analysis
     std::vector<Obj::Elec> elecs_;
     std::vector<Obj::Muon> muons_;
     std::vector<Obj::Jet> jets_;
-   std::vector<LV> leptons_;
+    std::vector<LV> leptons_;
     std::vector<LV> VBFjets_;
     std::vector<LV> bjets_;
     std::vector<LV> Wjets_;
@@ -103,6 +106,7 @@ namespace Analysis
     // Fat Jets reconstruction
     std::vector<Obj::Jet> fatJets_;
     LV hbbFatJet_;
+    LV wjjFatJet_;
  
 
     //_______________________________________________________
@@ -131,7 +135,7 @@ namespace Analysis
         // Flags used in the anlaysis
         is_vbs = false;
         is_hbb = false;
-//        is_wjj = false;
+        is_wjj = false;
 
         // Signal's generator level kinematics
         gen_ijet_ = LV();
@@ -147,7 +151,7 @@ namespace Analysis
 
         // Reconstructed objects
         gen_W_.clear();
-	gen_Z_.clear();
+        gen_Z_.clear();
         elecs_.clear();
         muons_.clear();
         jets_.clear();
@@ -157,6 +161,7 @@ namespace Analysis
         bjets_.clear();
         Wjets_.clear();
         hbbFatJet_ = LV(); 
+        wjjFatJet_ = LV();
 
     }
 
@@ -229,16 +234,16 @@ namespace Analysis
                     // w_decay_statuses.push_back(nt.GenPart_status()[igen]);
                 }
             }
-//            if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
-//                is_wjj = true;
-//            }
-//            if (is_wjj) 
-//            {
-//                if (w_decay_p4s.size() == 2) {
-//                    gen_Wb0_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[0] : w_decay_p4s[1];
-//                    gen_Wb1_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[1] : w_decay_p4s[0];
-//                }
-//            }
+            if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
+                is_wjj = true;
+            }
+            if (is_wjj) 
+            {
+                if (w_decay_p4s.size() == 2) {
+                    gen_Wb0_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[0] : w_decay_p4s[1];
+                    gen_Wb1_ = w_decay_p4s[0].pt() > w_decay_p4s[1].pt() ? w_decay_p4s[1] : w_decay_p4s[0];
+                }
+            }
         }
     }
 
@@ -326,21 +331,35 @@ namespace Analysis
             p4.SetPtEtaPhiM(nt.FatJet_pt()[ifatjet], nt.FatJet_eta()[ifatjet], nt.FatJet_phi()[ifatjet], 
                             nt.FatJet_msoftdrop()[ifatjet]);
             this_fatJet.p4 = RooUtil::Calc::getLV(p4);
-            this_fatJet.hbbScore = nt.FatJet_deepTagMD_HbbvsQCD()[ifatjet];
+            this_fatJet.hbbScore = nt.FatJet_btagDDBvLV2()[ifatjet];
+            this_fatJet.wjjScore = nt.FatJet_deepTagMD_WvsQCD()[ifatjet];
             this_fatJet.JetIdx = -999;
             fatJets_.push_back(this_fatJet);
         }
         
         // FatJet Selection
-        float maxhbbscore = fatJets_[0].hbbScore;
-        int maxHbbNo = 0;
-        for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
-            if (fatJets_[ifatjet].hbbScore >= maxhbbscore) {
-                maxHbbNo = ifatjet;
-                maxhbbscore = fatJets_[ifatjet].hbbScore;
+        if (fatJets_.size() > 0) 
+        { 
+            float maxhbbscore = fatJets_[0].hbbScore;
+            float maxwjjscore = fatJets_[0].wjjScore;
+            int maxHbbNo = 0;
+            int maxWjjNo = 0;
+        // Prioritize Hbb selection
+            for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+                if (fatJets_[ifatjet].hbbScore >= maxhbbscore) {
+                    maxHbbNo = ifatjet;
+                    maxhbbscore = fatJets_[ifatjet].hbbScore;
+                }
             }
+            hbbFatJet_ = fatJets_[maxHbbNo].p4;
+            for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+                if (fatJets_[ifatjet].wjjScore >= maxwjjscore && ifatjet != maxHbbNo) {
+                    maxWjjNo = ifatjet;
+                    maxwjjscore = fatJets_[ifatjet].wjjScore;
+                }
+            }
+            wjjFatJet_ = fatJets_[maxWjjNo].p4;
         }
-        hbbFatJet_ = fatJets_[maxHbbNo].p4;
     }
 
 
@@ -506,6 +525,7 @@ namespace Cutflow
 {
     // cutflow
     TH1F* h_cutflow_;
+    TH1F* h_cutflow_unwgt_;
 
     //_______________________________________________________
     // Cutflow
@@ -514,20 +534,24 @@ namespace Cutflow
         kNoSelection = 0,
         kVbs,
         kHbb,
+        kWjj,
         kTwoLightLeptons,
         kOneHbbFatJet,
-	kHbbScore,
+        kHbbScore,
         kAtLeastTwoPt30Jets,
-	kMjj,
+        kMjj,
         kNCuts,
     };
+
+
 
     //_______________________________________________________
     // Book the histograms
     void bookCutflow()
     {
-        // Cutflow histogram
+        // Cutflow histogram for including gen_level
         h_cutflow_ = new TH1F("h_cutflow", "Cutflow of the selections", Cuts::kNCuts, 0, Cuts::kNCuts);
+
     }
 
     //_______________________________________________________
@@ -588,42 +612,41 @@ namespace Hist
     TH1F* VBFjetMass;
     TH1F* ptB1;
     TH1F* ptB2;
-    TH1F* BjetMass;
-    TH1F* BjetMass_400cut;
-    TH1F* ptWjet1;
+    TH1F* ptWjet1_;
     TH1F* ptWjet2;
     TH1F* WjetMass;
     
     // dR between reconstructed and gen-level
-    TH1F* dRleadingVBF;
+    TH1F* dRleadingVBF_;
     TH1F* dRsubleadingVBF;
     TH1F* dRsubleadingbq;
     TH1F* dRleadingbq;
     TH1F* dRhiggs;
 
-    // Recombination of VBF
-    TH1F* recombdRleadingVBF;
-    TH1F* recombdRleadingbq;
-
     // FatJets
-    TH1F* ptHbb;
-    TH1F* etaHbb;
+    TH1F* ptHbb_;
+    TH1F* etaHbb_;
+    TH1F* etaWjj_;
+    TH1F* ptWjj_;
     TH1F* massHbb;
-    TH1F* nFatjets;
+    TH1F* nFatjets_;
+
+    // FatJetScore
+    TH1F* wjjScore_;
+    TH1F* wjetScore_;
+    TH1F* hbbScore_;
+    TH1F* hjetScore_;
 
     // s-hat variable
-    TH1F* massZH;
+    TH1F* massZH_;
     TH1F* massZHzoom;
 
     //_______________________________________________________
     // Book the histograms
     void bookHistograms()
     {
-        // Recombination of VBF
-        recombdRleadingVBF = new TH1F("recombdRleadingVBF", "smallest delta R of leading VBF quarks between reco- and gen-level", 1080, 0, 5);
-        recombdRleadingbq = new TH1F("recombdRleadingbq", "smallest delta R of leading bottom quarks between reco- and gen-level", 1080, 0, 5);
         // dR
-        dRleadingVBF = new TH1F("dRleadingVBF", "delta R of leading VBF quarks", 1080, 0, 5);
+        dRleadingVBF_ = new TH1F("dRleadingVBF", "delta R of leading VBF quarks", 1080, 0, 5);
         dRsubleadingbq = new TH1F("dRsubleadingbq", "delta R of subleading bottom quarks", 1080, 0, 5);
         dRsubleadingVBF = new TH1F("dRsubleadingVBF", "delta R of subleading VBF quarks", 1080, 0, 5);
         dRleadingbq = new TH1F("dRleadingbq", "delta R of leading bottom quarks", 1080, 0, 5);
@@ -649,7 +672,8 @@ namespace Hist
         massDiLep = new TH1F("massDiLep", "mass of dileptons", 1080, 0, 250);
         ptDiLep = new TH1F("ptDiLep", "pt of the dilepton system", 1080, 0, 1800);
         dRLep = new TH1F("dRLep", "delta R between two leptons_", 1080, 0, 5);
-
+        
+        //______________________________________________________
         // jets kinematics
         etaVBFjet1 = new TH1F("etaVBFjet1", "eta of leading VBF jet", 1080, -5, 5); 
         etaVBFjet2 = new TH1F("etaVBFjet2", "eta of subleading VBF jet", 1080, -5, 5); 
@@ -659,22 +683,29 @@ namespace Hist
         VBFjetMass = new TH1F("VBFjetMass", "Invariant mass of VBF quark system", 1080, 0, 3500);
         ptB1 = new TH1F("ptB1", "pt of leading bottom quarks", 1080, 0, 400);
         ptB2 = new TH1F("ptB2", "pt of subleading bottom quarks", 1080, 0, 400);
-        BjetMass = new TH1F("BjetMass", "Invariant mass of bottom quark system", 1080, 0, 300);
-        BjetMass_400cut = new TH1F("BjetMass_400cut", "Invariant mass of b quark system after the cut", 1080, 0, 300);
-        ptWjet1 = new TH1F("ptWjet1", "pt of leading jet quarks from W bosons", 1080, 0, 300);
+        ptWjet1_ = new TH1F("ptWjet1", "pt of leading jet quarks from W bosons", 1080, 0, 300);
         ptWjet2 = new TH1F("ptWjet2", "pt of subleading jet quarks from W bosons", 1080, 0, 300);
         WjetMass = new TH1F("WjetMass", "Invariant mass of jet quark system", 1080, 0, 100); 
 
         //______________________________________________________
         // fatJets Kinematics
-        ptHbb = new TH1F("ptHbb", "pt of Hbb fatjet", 1080, 0, 1800);
-        etaHbb = new TH1F("etaHbb", "eta of Hbb fatjet", 1080, -5, 5);
+        ptHbb_ = new TH1F("ptHbb", "pt of Hbb fatjet", 1080, 0, 1800);
+        ptWjj_ = new TH1F("ptWjj", "pt of Wjj fatjet", 1080, 0, 1800);
+        etaHbb_ = new TH1F("etaHbb", "eta of Hbb fatjet", 1080, -5, 5);
+        etaWjj_ = new TH1F("etaWjj", "eta of Wjj fatjet", 1080, -5, 5);
         massHbb = new TH1F("massHbb", "mass of Hbb fatjet", 1080, 0, 200);
-        nFatjets = new TH1F("nFatjets", "Number of fatjets", 5, 0, 5);
+        nFatjets_ = new TH1F("nFatjets", "Number of fatjets", 5, 0, 5);
+        
+        //______________________________________________________
+        // fatJets Score
+        hbbScore_ = new TH1F("hbbScore", "hbb score of fatjets", 1080, 0, 1);
+        hjetScore_ = new TH1F("hjetScore", "the hbb score of the selected hbb fatjet", 1080, 0, 1);
+        wjetScore_ = new TH1F("wjetScore", "the wjj score of the selected wjj fatjet", 1080, 0, 1);
+        wjjScore_ = new TH1F("wjjScore", "wjj score of fatjets", 1080, 0, 1);
 
         //_______________________________________________________
         // s-hat variable
-        massZH = new TH1F("massZH", "Invariant mass of the ZH system", 1080, 0, 3500);
+        massZH_ = new TH1F("massZH", "Invariant mass of the ZH system", 1080, 0, 3500);
         massZHzoom = new TH1F("massZHzoom", "Invariant mass of the ZH system", 1080, 0, 500);
     }
 
@@ -682,13 +713,18 @@ namespace Hist
     // Fill fatjet Histograms
     void fillHbbFatJetKinematicHistograms()
     {
-        ptHbb->Fill(Analysis::hbbFatJet_.Pt(), Analysis::wgt_);
-        etaHbb->Fill(Analysis::hbbFatJet_.Eta(), Analysis::wgt_);
+        ptHbb_->Fill(Analysis::hbbFatJet_.Pt(), Analysis::wgt_);
+        ptWjj_->Fill(Analysis::wjjFatJet_.Pt(), Analysis::wgt_);
+        etaHbb_->Fill(Analysis::hbbFatJet_.Eta(), Analysis::wgt_);
+        etaWjj_->Fill(Analysis::wjjFatJet_.Eta(), Analysis::wgt_);
         massHbb->Fill(Analysis::hbbFatJet_.M(), Analysis::wgt_);
-        nFatjets->Fill(Analysis::fatJets_.size(), Analysis::wgt_);
+        nFatjets_->Fill(Analysis::fatJets_.size(), Analysis::wgt_);
+        for (unsigned int j = 0; j < Analysis::fatJets_.size(); j++) {
+            hbbScore_->Fill(Analysis::fatJets_[j].hbbScore, Analysis::wgt_);
+            wjjScore_->Fill(Analysis::fatJets_[j].wjjScore, Analysis::wgt_);
+        }
+        hjetScore_->Fill(Analysis::fatJet
     }
-
-
 
     //_______________________________________________________
     // Fill Lepton histograms
@@ -715,7 +751,7 @@ namespace Hist
         LV wj2 = (Analysis::Wjets_[0]).Pt() > (Analysis::Wjets_[1]).Pt() ? Analysis::Wjets_[1] : Analysis::Wjets_[0];
         LV VBF1 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[0] : Analysis::VBFjets_[1];
         LV VBF2 = (Analysis::VBFjets_[0]).Pt() > (Analysis::VBFjets_[1]).Pt() ? Analysis::VBFjets_[1] : Analysis::VBFjets_[0];
-        ptWjet1->Fill(wj1.Pt(), Analysis::wgt_);
+        ptWjet1_->Fill(wj1.Pt(), Analysis::wgt_);
         ptWjet2->Fill(wj2.Pt(), Analysis::wgt_);
         WjetMass->Fill((wj1+wj2).M(), Analysis::wgt_);
 
@@ -726,7 +762,7 @@ namespace Hist
         ptVBFjet2->Fill(VBF2.Pt(), Analysis::wgt_);
 
         re_deltaEtaVBF->Fill(TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()), Analysis::wgt_);
-        VBFjetMass->Fill((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M());
+        VBFjetMass->Fill((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M(), Analysis::wgt_);
 
         // Figuring out which combination of VBF jets is good
         float dR11 = RooUtil::Calc::DeltaR(VBF1, Analysis::gen_jet0_);
@@ -738,7 +774,7 @@ namespace Hist
         LV VBF2_matched = dR11 + dR22 < dR12 + dR21 ? VBF2 : VBF1;
 
         // dR between reco- and gen- level
-        dRleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF1_matched, Analysis::gen_jet0_), Analysis::wgt_);
+        dRleadingVBF_->Fill(RooUtil::Calc::DeltaR(VBF1_matched, Analysis::gen_jet0_), Analysis::wgt_);
         dRsubleadingVBF->Fill(RooUtil::Calc::DeltaR(VBF2_matched, Analysis::gen_jet1_), Analysis::wgt_);
         dRhiggs->Fill(RooUtil::Calc::DeltaR(Analysis::hbbFatJet_, Analysis::gen_H_), Analysis::wgt_);
 
@@ -761,7 +797,7 @@ namespace Hist
     // Fill s-hat kinematic variables
     void fillSHatHistograms()
     {
-        massZH->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
+        massZH_->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
         massZHzoom->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
     }
     
@@ -769,19 +805,29 @@ namespace Hist
  
     //_______________________________________________________
     // Write the histograms
-    void writeHistograms(TFile* ofile)
+    void writeHistograms(TFile* ofile, bool gen_level)
     {
+
         // Done with the analysis
         ofile->cd();
+
+        if (gen_level)
+        {
         // Gen-level
-        h_gen_ptb0_->Write();
-        h_gen_ptb1_->Write();
-        h_gen_massbQsystem_->Write();
-        h_gen_massVBF_->Write();
-        h_gen_deltaEta_->Write();
-        h_gen_ptH_->Write();
-        h_gen_ptZ_->Write();
-        h_gen_ptW_->Write();
+            h_gen_ptb0_->Write();
+            h_gen_ptb1_->Write();
+            h_gen_massbQsystem_->Write();
+            h_gen_massVBF_->Write();
+            h_gen_deltaEta_->Write();
+            h_gen_ptH_->Write();
+            h_gen_ptZ_->Write();
+            h_gen_ptW_->Write();
+        // difference between reco- and gen-
+            dRleadingVBF_->Write();
+            dRsubleadingVBF->Write();
+            dRsubleadingbq->Write();
+            dRleadingbq->Write();
+        }
         ptLep1->Write();
         ptLep2->Write();
         re_deltaEtaVBF->Write();
@@ -799,21 +845,20 @@ namespace Hist
         VBFjetMass->Write();
         ptB1->Write();
         ptB2->Write();
-        BjetMass->Write();
-        ptWjet1->Write();
+        ptWjet1_->Write();
         ptWjet2->Write();
         WjetMass->Write();
-        dRleadingVBF->Write();
-        dRsubleadingVBF->Write();
-        dRsubleadingbq->Write();
-        dRleadingbq->Write();
-        recombdRleadingVBF->Write();
-        recombdRleadingbq->Write();
-        ptHbb->Write();
-        etaHbb->Write();
+        etaHbb_->Write();
+        etaWjj_->Write();
         massHbb->Write();
-        nFatjets->Write();
-        massZH->Write();
+        
+        // fatJets Kinematics
+        ptHbb_->Write();
+        ptWjj_->Write();
+        nFatjets_->Write();
+        hbbScore_->Write();
+        wjjScore_->Write();
+        massZH_->Write();
         massZHzoom->Write();
         dRhiggs->Write();
     }
@@ -828,10 +873,84 @@ namespace Hist
 //====================================================================
 // Main function
 //====================================================================
-int main() 
+int main(int argc, char** argv) 
 {
+    // Setting 
+    std::string input_path, output_path;
+    float scale1fb;
+    bool gen_level;
+    int n_events;
+     
+
+    // Grand option setting
+    cxxopts::Options options("\n  $ doAnalysis",  "\n         **********************\n         *                    *\n         *       Looper       *\n         *                    *\n         **********************\n");
+
+    // Read the options
+    options.add_options()
+        ("i,input"       , "Comma separated input file list OR if just a directory is provided it will glob all in the directory BUT must end with '/' for the path", cxxopts::value<std::string>())
+        ("o,output"      , "Output file name"                                                                                    , cxxopts::value<std::string>())
+        ("n,nevents"     , "N events to loop over"                                                                               , cxxopts::value<int>()->default_value("-1"))
+        ("s,scale1fb"    , "pass scale1fb of the sample"                                                                         , cxxopts::value<float>())
+	("g,gen_level"   , "pass boolean for whether a gen-level analysis should be done"					 , cxxopts::value<bool>()->default_value("false"))
+        ("h,help"        , "Print help")
+        ;
+
+    auto result = options.parse(argc, argv);
+
+    //_______________________________________________________________________________
+    // --help
+    if (result.count("help"))
+    {
+        std::cout << options.help() << std::endl;
+        exit(1);
+    } 
+
+    //_______________________________________________________________________________
+    // --input 
+    if (result.count("input"))
+    {
+	input_path = result["input"].as<std::string>();
+    }
+    else 
+    {
+	std::cout << options.help() << std::endl;
+	std::cout << "No input provided" << std::endl;
+        exit(1);
+    } 
+   
+    //_______________________________________________________________________________
+    // --nevents
+    n_events = result["nevents"].as<int>();
+
+    //_______________________________________________________________________________
+    // --gen_level
+    gen_level = result["gen_level"].as<bool>();
+
+    //_______________________________________________________________________________
+    // --scale1fb
+    if (result.count("scale1fb"))
+    {
+        scale1fb = result["scale1fb"].as<float>();
+    }
+
+    //_______________________________________________________________________________
+    // --output
+    if (result.count("output"))
+    {
+	output_path = result["output"].as<std::string>();
+    }
+    else 
+    {
+	std::cout << options.help() << std::endl;
+	std::cout << "No output provided" << std::endl;
+        exit(1);
+    } 
+    
+
+
     // Create your output root file
-    TFile* output_file = new TFile("VBSZZHoutput.root", "recreate");
+    TFile* output_file = new TFile(output_path.c_str(), "recreate");
+
 
     // Create Histograms
     Hist::bookHistograms();
@@ -840,7 +959,7 @@ int main()
     Cutflow::bookCutflow();
 
     // Set scale 1fb (the per event weight normalized for 1/fb)
-    Analysis::setScale1fb(2.994/641998); // 11.23 fb / (# of events = 642498)
+    Analysis::setScale1fb(scale1fb); 
 
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
@@ -852,30 +971,20 @@ int main()
     Analysis::setConfig();
 
     // Input Path (RooUtil::Looper can accept comma separated list)
-    std::vector<TString> input_file_paths;
-    for (unsigned i = 0; i < 26; i++)
-    {
-        TString input_temp = "/home/users/joytzphysics/VBSZZH_C2V_3/output_" + std::to_string(i) + ".root";
-        input_file_paths.push_back(input_temp);
-    }
-
+    // input_file_paths.push_back(input_path.c_str());
     // Use RooUtil::StringUtil to concatenate the input file paths
-    TString input = RooUtil::StringUtil::join(input_file_paths, ",");
+    // TString input = RooUtil::StringUtil::join(input_file_paths, ",");
 
     // Name of the TTree in the input root files.
     TString input_tree_name = "Events";
 
     // Create the TChain that holds the TTree's of the NanoAOD ntuples.
-    TChain* events_tchain = RooUtil::FileUtil::createTChain(input_tree_name, input);
-
-    // Max number of events to loop. (-1 = loop over all)
-    // int n_events = 1; // Looping over first event only
-    int n_events = -1; // To loop over all events
+    TChain* events_tchain = RooUtil::FileUtil::createTChain(input_tree_name, input_path);
 
     // Create a looper that will handle event looping
     RooUtil::Looper<Nano> looper;
-
     nt.SetYear(Analysis::year_);
+
     // Initializer the looper
     looper.init(events_tchain, &nt, n_events);
 
@@ -886,107 +995,119 @@ int main()
     int cut4_events = 0;
     int cut5_events = 0;
     int cut6_events = 0;
-
+    int cut7_events = 0;
+    int cut8_events = 0;
+    
     // Loop through events
     while (looper.nextEvent())
     {
-        // print out event details
-//      dumpGenParticleInfos();
-
+	// dumpGenParticleInfos();
         // print out information
           
         // Run the analysis algorithms (selections, computing variables, etc.)
         Analysis::runAlgorithms();
         // Fill the "counter" histogram
         Cutflow::fillCutflow(Cutflow::Cuts::kNoSelection);
-
-        // Cut#1: Check if vbs
-        if (Analysis::is_vbs == false) { continue;}
-        cut1_events ++;
-        Cutflow::fillCutflow(Cutflow::Cuts::kVbs);
-        // Cut#2: Check if hbb
-        if (Analysis::is_hbb == false) { continue;}
-        cut2_events ++;
-        Cutflow::fillCutflow(Cutflow::Cuts::kHbb);
-        // Cut#3: Check if wjj
-//        if (Analysis::is_wjj == false) { continue;}
-//        cut3_events ++;
-//        Cutflow::fillCutflow(Cutflow::Cuts::kWjj);
+        
+	
+        if (gen_level) {
+            // Cut#1: Check if vbs
+            if (Analysis::is_vbs == false) { continue;}
+            Cutflow::fillCutflow(Cutflow::Cuts::kVbs);
+            cut1_events ++;
+            // Cut#2: Check if hbb
+            if (Analysis::is_hbb == false) { continue;}
+            Cutflow::fillCutflow(Cutflow::Cuts::kHbb);
+            cut2_events ++;
+            // Cut#3: Check if wjj
+            if (Analysis::is_wjj == false) { continue;}
+            Cutflow::fillCutflow(Cutflow::Cuts::kWjj);
+            cut3_events ++;
+        }
 
         // Cut#3: Require that there are exactly two leptons
-        if (not (Analysis::elecs_.size() + Analysis::muons_.size() == 2)) { continue; }
-        // Cut#3: Require that the two leptons have OS (opposite-sign)
-        int is_os = false;
-        if (Analysis::elecs_.size() == 2)
+        if (not ((Analysis::elecs_.size() == 2) || (Analysis::muons_.size() == 2))) { continue; }
+            // Cut#3: Require that the two leptons have OS (opposite-sign)
+            int is_os = false;
+            if (Analysis::elecs_.size() == 2)
+            {
+                is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
+            }
+            else if (Analysis::muons_.size() == 2)
+            {
+                is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
+            }
+            else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
         {
-            is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
+            is_os = Analysis::muons_[0].pdgid * Analysis::elecs_[0].pdgid < 0;
         }
-        else if (Analysis::muons_.size() == 2)
-        {
-            is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
-        }
-        else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
-	{
-	    is_os = Analysis::muons_[0].pdgid * Analysis::elecs_[0].pdgid < 0;
-	}
 
         if (not (is_os)) { continue; }
-	// Cut#3: Require that the leading leptons Pt >= 40, subleading >= 30
+        // Cut#3: Require that the leading leptons Pt >= 40, subleading >= 30
         LV leading = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[0] : Analysis::leptons_[1];
         LV subleading = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[1] : Analysis::leptons_[0];
-        
-	if (not (leading.Pt() >= 40 && subleading.Pt() >= 30)) {continue;}
+            
+        if (not (leading.Pt() >= 40 && subleading.Pt() >= 30)) {continue;}
         Cutflow::fillCutflow(Cutflow::Cuts::kTwoLightLeptons);
-        cut3_events ++; 
-
-        // Cut#4: Require at least one fatjet with softdropmass > 40 GeV
-        if (not (Analysis::fatJets_.size() >= 1 ) ) { continue;}
         cut4_events ++;
+
+        // Cut#4: Require at least two fatjet with softdropmass > 40 GeV
+        if (not (Analysis::fatJets_.size() >= 2 ) ) { continue;}
+        cut5_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kOneHbbFatJet);
-	// Cut#5: Require the Hbb score > 0.5
-	int no_Hbb = 0;
-	for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
-            if (Analysis::fatJets_[ifatjet].hbbScore >= 0.5) { no_Hbb += 1; }
-	}
-	if (no_Hbb = 0) { continue; }
-	cut5_events ++;
-	Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
+
+        // Cut#5: Require the Hbb score > 0.5
+//        float maxhbbscore = Analysis::fatJets_[0].hbbScore;
+//        int maxHbbNo = 0;
+//            for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
+//                if (Analysis::fatJets_[ifatjet].hbbScore >= maxhbbscore) {
+//                    maxHbbNo = ifatjet;
+//                    maxhbbscore = Analysis::fatJets_[ifatjet].hbbScore;
+//                }
+//            }
+//        if (maxhbbscore < 0.5) { continue;}
+//        cut6_events ++;
+//        Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
+
         // Cut#6: Require that there are at least 2 pt > 30 GeV jets
         
         if (not (Analysis::jets_.size() >= 2)) { continue; }
-        cut6_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastTwoPt30Jets);
+        cut7_events ++;
 
-	// Cut#7: Require mjj > 500, deltaEtajj > 3
-	if (not ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500)) { continue;}
-	if (not (TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()) > 3)) { continue;}
-	Cutflow::fillCutflow(Cutflow::Cuts::kMjj);
+        // Cut#7: Require mjj > 500, deltaEtajj > 3
+        if (not ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500)) { continue;}
+        if (not (TMath::Abs(Analysis::VBFjets_[0].Eta()-Analysis::VBFjets_[1].Eta()) > 3)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kMjj);
+        cut8_events ++;
 
         // Fill Lepton Histogram;
         Hist::fillLeptonsKinematicHistograms();
 
         // All cuts have passed
         // Now fill the histograms
-        Hist::fillGenLevelHistograms();
-        Hist::fillSHatHistograms();
+        if (gen_level) { Hist::fillGenLevelHistograms(); }
+        // Hist::fillSHatHistograms();
         Hist::fillJetsKinematicHistograms();
         Hist::fillHbbFatJetKinematicHistograms();
  
     }
 
     // Write out the histograms
-    Hist::writeHistograms(output_file);
+    Hist::writeHistograms(output_file, gen_level);
 
     // Write out the cutflow histogram
     Cutflow::writeCutflow(output_file);
 
     // Produce cutflow events number
-    cout << "The first cut (vbswzh) produces " << cut1_events << " events." << endl;
+    cout << "The first cut (vbs) produces " << cut1_events << " events." << endl;
     cout << "The second cut (hbb) produces " << cut2_events << " events." << endl;
     cout << "The third cut (wjj) produces " << cut3_events << " events." << endl;
-    cout << "The fourth cut (two leptons) produces " << cut4_events << "events." << endl;
-    cout << "The fifth cut (1 fatjet) produces " << cut5_events << " events." << endl;
-    cout << "The sixth cut (6 jets) produces " << cut6_events << " events." << endl;
+    cout << "The fourth cut (2 OS leptons: ee or uu) produces " << cut4_events << "events." << endl;
+    cout << "The fifth cut (at least one fatjet) produces " << cut5_events << " events." << endl;
+    cout << "The sixth cut (hbb score) produces " << cut6_events << " events." << endl;
+    cout << "The sixth cut (2 jets) produces " << cut7_events << " events." << endl;
+    cout << "The sixth cut (mjj > 500, deltaEtajj) produces " << cut7_events << " events." << endl;
 
     // Close the file
     output_file->Close();
