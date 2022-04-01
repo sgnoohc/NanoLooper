@@ -6,16 +6,17 @@ def plot(histname, xaxis_name):
 
     p.dump_plot(
         # reference frame (with lower value)
-            fnames=["ttbaroutput.root"],
+            fnames=["hadds/ttbar.root"],
             # with larger value
             # data_fname="/home/users/joytzphysics/plots/VBSWWH_4p51.root",
-            sig_fnames=["VBSWZHoutput.root"],
+            sig_fnames=["hadds/VBSOSWWH_C2V_3.root", "hadds/VBSWZH_C2V_3.root"],
             legend_labels=["t#bar{t}"],
-            signal_labels=["VBSWZH C_{2V}=3"],
+            signal_labels=["VBSOSWWH C_{2V}=3", "VBSWZH C_{2V}=3"],
             filter_pattern=histname,
             dogrep=False,
+            dirname="plots_compare",
             extraoptions={
-                "nbins": 60,
+                "nbins": 30,
                 "lumi_value": 137,
                 #"ratio_range": [0., 100.],
                 #"legend_datalabel": "VBSWWH C_{2V}=4p5",
@@ -26,6 +27,7 @@ def plot(histname, xaxis_name):
                 #"ratio_xaxis_title":xaxis_name,
                 "print_yield":True,
                 "yield_prec":4,
+                "signal_scale":10,
                 },
     )
 
@@ -61,7 +63,12 @@ if __name__ == "__main__":
                  "dRhiggs",
                  "ptWjj",
                  "etaWjj",
+                 "massZH",
+                 "ST",
+                 "hjetScore",
+                 "re_deltaEtaVBF",
                  )
+
     for name in hist_list:
         plot(name, "GeV/c^2")
 

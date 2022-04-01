@@ -331,7 +331,8 @@ namespace Analysis
             p4.SetPtEtaPhiM(nt.FatJet_pt()[ifatjet], nt.FatJet_eta()[ifatjet], nt.FatJet_phi()[ifatjet], 
                             nt.FatJet_msoftdrop()[ifatjet]);
             this_fatJet.p4 = RooUtil::Calc::getLV(p4);
-            this_fatJet.hbbScore = nt.FatJet_btagDDBvLV2()[ifatjet];
+            // this_fatJet.hbbScore = nt.FatJet_btagDDBvLV2()[ifatjet];
+            this_fatJet.hbbScore = nt.FatJet_particleNet_HbbvsQCD()[ifatjet];
             this_fatJet.wjjScore = nt.FatJet_deepTagMD_WvsQCD()[ifatjet];
             this_fatJet.JetIdx = -999;
             fatJets_.push_back(this_fatJet);
@@ -340,19 +341,19 @@ namespace Analysis
         // FatJet Selection
         if (fatJets_.size() > 0) 
         { 
-            float maxhbbscore = fatJets_[0].hbbScore;
-            float maxwjjscore = fatJets_[0].wjjScore;
-            int maxHbbNo = 0;
-            int maxWjjNo = 0;
+            float maxhbbscore = -999;
+            float maxwjjscore = -999;
+            int maxHbbNo;
+            int maxWjjNo;
         // Prioritize Hbb selection
-            for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+            for (unsigned int ifatjet = 0; ifatjet < fatJets_.size(); ifatjet++) {
                 if (fatJets_[ifatjet].hbbScore >= maxhbbscore) {
                     maxHbbNo = ifatjet;
                     maxhbbscore = fatJets_[ifatjet].hbbScore;
                 }
             }
             hbbFatJet_ = fatJets_[maxHbbNo].p4;
-            for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+            for (unsigned int ifatjet = 0; ifatjet < fatJets_.size(); ifatjet++) {
                 if (fatJets_[ifatjet].wjjScore >= maxwjjscore && ifatjet != maxHbbNo) {
                     maxWjjNo = ifatjet;
                     maxwjjscore = fatJets_[ifatjet].wjjScore;
@@ -444,8 +445,10 @@ namespace Analysis
     // Select jet quarks
     void classifyJet()
     {
-        double largestEta1 = (jets_[0].p4).Eta();
-        double largestEta2 = (jets_[0].p4).Eta();
+        if (jets_.size() == 0)
+            return;
+        double largestEta1 = -999;
+        double largestEta2 = 999;
         int VBFIndex1 = 0;
         int VBFIndex2 = 0;
         for (unsigned int i = 0; i < jets_.size(); i++) {
@@ -639,7 +642,8 @@ namespace Hist
 
     // s-hat variable
     TH1F* massZH_;
-    TH1F* massZHzoom;
+    TH1F* massZHzoom_;
+    TH1F* ST_;
 
     //_______________________________________________________
     // Book the histograms
@@ -706,7 +710,8 @@ namespace Hist
         //_______________________________________________________
         // s-hat variable
         massZH_ = new TH1F("massZH", "Invariant mass of the ZH system", 1080, 0, 3500);
-        massZHzoom = new TH1F("massZHzoom", "Invariant mass of the ZH system", 1080, 0, 500);
+        massZHzoom_ = new TH1F("massZHzoom", "Invariant mass of the ZH system", 1080, 0, 500);
+        ST_ = new TH1F("ST", "Scalar sum of VVH system", 1080, 0, 3500);
     }
 
     //_______________________________________________________
@@ -723,7 +728,14 @@ namespace Hist
             hbbScore_->Fill(Analysis::fatJets_[j].hbbScore, Analysis::wgt_);
             wjjScore_->Fill(Analysis::fatJets_[j].wjjScore, Analysis::wgt_);
         }
-        hjetScore_->Fill(Analysis::fatJet
+        float max_hbbScore = -999;
+        for (unsigned int j = 0; j < Analysis::fatJets_.size(); j++) {
+            if (max_hbbScore < Analysis::fatJets_[j].hbbScore)
+            {
+                max_hbbScore = Analysis::fatJets_[j].hbbScore;
+            }
+        }
+        hjetScore_->Fill(max_hbbScore, Analysis::wgt_);
     }
 
     //_______________________________________________________
@@ -798,7 +810,8 @@ namespace Hist
     void fillSHatHistograms()
     {
         massZH_->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
-        massZHzoom->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
+        massZHzoom_->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
+        ST_->Fill(Analysis::leptons_[0].pt() + Analysis::leptons_[1].pt() + Analysis::hbbFatJet_.pt() + Analysis::wjjFatJet_.pt(), Analysis::wgt_);
     }
     
 
@@ -827,6 +840,7 @@ namespace Hist
             dRsubleadingVBF->Write();
             dRsubleadingbq->Write();
             dRleadingbq->Write();
+            dRhiggs->Write();
         }
         ptLep1->Write();
         ptLep2->Write();
@@ -858,9 +872,10 @@ namespace Hist
         nFatjets_->Write();
         hbbScore_->Write();
         wjjScore_->Write();
+        hjetScore_->Write();
         massZH_->Write();
         massZHzoom->Write();
-        dRhiggs->Write();
+        ST_->Write();
     }
 
 }
@@ -1057,17 +1072,17 @@ int main(int argc, char** argv)
         Cutflow::fillCutflow(Cutflow::Cuts::kOneHbbFatJet);
 
         // Cut#5: Require the Hbb score > 0.5
-//        float maxhbbscore = Analysis::fatJets_[0].hbbScore;
-//        int maxHbbNo = 0;
-//            for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
-//                if (Analysis::fatJets_[ifatjet].hbbScore >= maxhbbscore) {
-//                    maxHbbNo = ifatjet;
-//                    maxhbbscore = Analysis::fatJets_[ifatjet].hbbScore;
-//                }
-//            }
-//        if (maxhbbscore < 0.5) { continue;}
-//        cut6_events ++;
-//        Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
+        float maxhbbscore = Analysis::fatJets_[0].hbbScore;
+        int maxHbbNo = 0;
+        for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
+            if (Analysis::fatJets_[ifatjet].hbbScore >= maxhbbscore) {
+                maxHbbNo = ifatjet;
+                maxhbbscore = Analysis::fatJets_[ifatjet].hbbScore;
+            }
+        }
+        if (maxhbbscore < 0.8) { continue;}
+        cut6_events ++;
+        Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
 
         // Cut#6: Require that there are at least 2 pt > 30 GeV jets
         
@@ -1087,7 +1102,7 @@ int main(int argc, char** argv)
         // All cuts have passed
         // Now fill the histograms
         if (gen_level) { Hist::fillGenLevelHistograms(); }
-        // Hist::fillSHatHistograms();
+        Hist::fillSHatHistograms();
         Hist::fillJetsKinematicHistograms();
         Hist::fillHbbFatJetKinematicHistograms();
  
