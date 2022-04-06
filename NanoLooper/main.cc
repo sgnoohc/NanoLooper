@@ -187,11 +187,11 @@ namespace Analysis
             gen_jjet_ = nt.GenPart_p4()[3];
             gen_jet0_ = gen_ijet_.pt() > gen_jjet_.pt() ? gen_ijet_ : gen_jjet_;
             gen_jet1_ = gen_ijet_.pt() > gen_jjet_.pt() ? gen_jjet_ : gen_ijet_;
-	    for (unsigned int i = 0; i < 7; ++i) {
-		if (abs(nt.GenPart_pdgId()[i] == 24)) { gen_W_.push_back(nt.GenPart_p4()[i]);}
-		if (abs(nt.GenPart_pdgId()[i] == 23)) { gen_Z_.push_back(nt.GenPart_p4()[i]);}
-		if (abs(nt.GenPart_pdgId()[i] == 25)) { gen_H_ = nt.GenPart_p4()[i];} 
-	    }
+            for (unsigned int i = 0; i < 7; ++i) {
+                if (abs(nt.GenPart_pdgId()[i] == 24)) { gen_W_.push_back(nt.GenPart_p4()[i]);}
+                if (abs(nt.GenPart_pdgId()[i] == 23)) { gen_Z_.push_back(nt.GenPart_p4()[i]);}
+                if (abs(nt.GenPart_pdgId()[i] == 25)) { gen_H_ = nt.GenPart_p4()[i];} 
+            }
             // Select b quarks and hbb
             std::vector<LV> h_decay_p4s;
             std::vector<int> h_decay_pdgIds;
@@ -208,9 +208,10 @@ namespace Analysis
                     // h_decay_statuses.push_back(nt.GenPart_status()[igen]);
                 }
             }
-            if (abs(h_decay_pdgIds[0]) == 5)
-            {
-                is_hbb = true;
+            if (h_decay_pdgIds.size() != 0) {
+                if (abs(h_decay_pdgIds[0]) == 5) {
+                    is_hbb = true;
+                }
             }
             if (is_hbb) 
             {
@@ -234,8 +235,10 @@ namespace Analysis
                     // w_decay_statuses.push_back(nt.GenPart_status()[igen]);
                 }
             }
-            if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
-                is_wjj = true;
+            if (w_decay_pdgIds.size() != 0) {
+                if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
+                    is_wjj = true;
+                }
             }
             if (is_wjj) 
             {
@@ -874,8 +877,8 @@ namespace Hist
         wjjScore_->Write();
         hjetScore_->Write();
         massZH_->Write();
-        massZHzoom->Write();
         ST_->Write();
+        massZHzoom_->Write();
     }
 
 }
@@ -896,7 +899,10 @@ int main(int argc, char** argv)
     bool gen_level;
     int n_events;
      
-
+    // Set the year 
+    Analysis::setYear(2018); // TODO: Update properly in the future. For now it's a Placeholder!
+    nt.SetYear(2018);
+ 
     // Grand option setting
     cxxopts::Options options("\n  $ doAnalysis",  "\n         **********************\n         *                    *\n         *       Looper       *\n         *                    *\n         **********************\n");
 
@@ -906,7 +912,7 @@ int main(int argc, char** argv)
         ("o,output"      , "Output file name"                                                                                    , cxxopts::value<std::string>())
         ("n,nevents"     , "N events to loop over"                                                                               , cxxopts::value<int>()->default_value("-1"))
         ("s,scale1fb"    , "pass scale1fb of the sample"                                                                         , cxxopts::value<float>())
-	("g,gen_level"   , "pass boolean for whether a gen-level analysis should be done"					 , cxxopts::value<bool>()->default_value("false"))
+    	("g,gen_level"   , "pass boolean for whether a gen-level analysis should be done"					 , cxxopts::value<bool>()->default_value("false"))
         ("h,help"        , "Print help")
         ;
 
@@ -979,10 +985,7 @@ int main(int argc, char** argv)
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
 
-    // Set the year 
-    Analysis::setYear(2018); // TODO: Update properly in the future. For now it's a Placeholder!
-
-    // Set up year dependent configuration of the analysis that are POG specific from CMS
+   // Set up year dependent configuration of the analysis that are POG specific from CMS
     Analysis::setConfig();
 
     // Input Path (RooUtil::Looper can accept comma separated list)
@@ -998,7 +1001,6 @@ int main(int argc, char** argv)
 
     // Create a looper that will handle event looping
     RooUtil::Looper<Nano> looper;
-    nt.SetYear(Analysis::year_);
 
     // Initializer the looper
     looper.init(events_tchain, &nt, n_events);
