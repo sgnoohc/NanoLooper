@@ -45,6 +45,7 @@ namespace Obj
         float isBtagScore;
         int isBtagTight;
         int isBtagLoose;
+        double mass;
     };
     
 }
@@ -56,6 +57,7 @@ namespace Obj
 namespace Analysis
 {
 
+    Int_t FJnonzero_;
     //_______________________________________________________
     // Per event weight (normalized to 1/fb of data)
     Double_t scale1fb_;
@@ -323,9 +325,10 @@ namespace Analysis
             // Then skip
             if (isOverlap)
                 continue;
-
+           
             // Keep fat jets softdropmass above 40 GeV
             float boostedMass = nt.FatJet_msoftdrop()[ifatjet]; 
+            this_fatJet.mass = boostedMass;
             if (not (boostedMass > 40.))
                 continue;
 
@@ -446,8 +449,10 @@ namespace Analysis
         
     //___________________________________________________________
     // Select jet quarks
+
     void classifyJet()
     {
+        
         if (jets_.size() == 0)
             return;
         double largestEta1 = -999;
@@ -480,6 +485,7 @@ namespace Analysis
                 break;
             }
         }
+
         for (unsigned int j = 0; j <jets_.size(); j++) {
             if (j != VBFIndex1 && j != VBFIndex2) {
                 double jetpT = (jets_[j].p4).Pt();
@@ -636,6 +642,7 @@ namespace Hist
     TH1F* ptWjj_;
     TH1F* massHbb;
     TH1F* nFatjets_;
+    TH1F* softdropmass_;
 
     // FatJetScore
     TH1F* wjjScore_;
@@ -668,7 +675,8 @@ namespace Hist
         // bQ kinematics
         h_gen_massbQsystem_ = new TH1F("h_gen_massbQsystem", "Mass of bottom quark system", 1080, 0, 200);
         h_gen_ptb0_ = new TH1F("h_gen_ptb0", "pt of leading bottom quarks", 1080, 0, 400);
-        h_gen_ptb1_ = new TH1F("h_gen_ptb1", "pt of subleading bottom quarks", 1080, 0, 400);
+        h_gen_deltaEta_ = new TH1F("h_gen_deltaEta", "Delta Eta of VBF quarks", 1080, 0, 10);
+        h_gen_massVBF_ = new TH1F("h_gen_massVBF", "Invariant mass of VBF quark system", 1080, 0, 3500);
         // Leptons kinematics
         ptLep1 = new TH1F("ptLep1", "pt of leading leptons_", 1080, 0, 600);
         ptLep2 = new TH1F("ptLep2", "pt of subleading leptons_", 1080, 0, 600);
@@ -679,7 +687,6 @@ namespace Hist
         massDiLep = new TH1F("massDiLep", "mass of dileptons", 1080, 0, 250);
         ptDiLep = new TH1F("ptDiLep", "pt of the dilepton system", 1080, 0, 1800);
         dRLep = new TH1F("dRLep", "delta R between two leptons_", 1080, 0, 5);
-        
         //______________________________________________________
         // jets kinematics
         etaVBFjet1 = new TH1F("etaVBFjet1", "eta of leading VBF jet", 1080, -5, 5); 
@@ -702,14 +709,14 @@ namespace Hist
         etaWjj_ = new TH1F("etaWjj", "eta of Wjj fatjet", 1080, -5, 5);
         massHbb = new TH1F("massHbb", "mass of Hbb fatjet", 1080, 0, 200);
         nFatjets_ = new TH1F("nFatjets", "Number of fatjets", 5, 0, 5);
-        
+        softdropmass_ = new TH1F("softdropmass", "softdrop mass of hbb fatjets", 1080, 0, 200);
+
         //______________________________________________________
         // fatJets Score
         hbbScore_ = new TH1F("hbbScore", "hbb score of fatjets", 1080, 0, 1);
         hjetScore_ = new TH1F("hjetScore", "the hbb score of the selected hbb fatjet", 1080, 0, 1);
         wjetScore_ = new TH1F("wjetScore", "the wjj score of the selected wjj fatjet", 1080, 0, 1);
-        wjjScore_ = new TH1F("wjjScore", "wjj score of fatjets", 1080, 0, 1);
-
+        wjjScore_ = new TH1F("wjjScore", "wjj score of fatjets", 1080, 0, 1); 
         //_______________________________________________________
         // s-hat variable
         massZH_ = new TH1F("massZH", "Invariant mass of the ZH system", 1080, 0, 3500);
@@ -730,7 +737,9 @@ namespace Hist
         for (unsigned int j = 0; j < Analysis::fatJets_.size(); j++) {
             hbbScore_->Fill(Analysis::fatJets_[j].hbbScore, Analysis::wgt_);
             wjjScore_->Fill(Analysis::fatJets_[j].wjjScore, Analysis::wgt_);
+            softdropmass_->Fill(Analysis::fatJets_[j].mass, Analysis::wgt_);
         }
+
         float max_hbbScore = -999;
         for (unsigned int j = 0; j < Analysis::fatJets_.size(); j++) {
             if (max_hbbScore < Analysis::fatJets_[j].hbbScore)
@@ -845,6 +854,7 @@ namespace Hist
             dRleadingbq->Write();
             dRhiggs->Write();
         }
+        softdropmass_->Write();
         ptLep1->Write();
         ptLep2->Write();
         re_deltaEtaVBF->Write();
@@ -1018,8 +1028,7 @@ int main(int argc, char** argv)
     // Loop through events
     while (looper.nextEvent())
     {
-	// dumpGenParticleInfos();
-        // print out information
+	    // dumpGenParticleInfos();
           
         // Run the analysis algorithms (selections, computing variables, etc.)
         Analysis::runAlgorithms();
@@ -1044,17 +1053,17 @@ int main(int argc, char** argv)
 
         // Cut#3: Require that there are exactly two leptons
         if (not ((Analysis::elecs_.size() == 2) || (Analysis::muons_.size() == 2))) { continue; }
-            // Cut#3: Require that the two leptons have OS (opposite-sign)
-            int is_os = false;
-            if (Analysis::elecs_.size() == 2)
-            {
-                is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
-            }
-            else if (Analysis::muons_.size() == 2)
-            {
-                is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
-            }
-            else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
+        // Cut#3: Require that the two leptons have OS (opposite-sign)
+        int is_os = false;
+        if (Analysis::elecs_.size() == 2)
+        {
+            is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
+        }
+        else if (Analysis::muons_.size() == 2)
+        {
+            is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
+        }
+        else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
         {
             is_os = Analysis::muons_[0].pdgid * Analysis::elecs_[0].pdgid < 0;
         }
@@ -1067,15 +1076,18 @@ int main(int argc, char** argv)
         if (not (leading.Pt() >= 40 && subleading.Pt() >= 30)) {continue;}
         Cutflow::fillCutflow(Cutflow::Cuts::kTwoLightLeptons);
         cut4_events ++;
-
-        // Cut#4: Require at least two fatjet with softdropmass > 40 GeV
+        
+        
+        // Cut#4: Require at least two fatjet with softdropmass > 20 GeV
         if (not (Analysis::fatJets_.size() >= 2 ) ) { continue;}
         cut5_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kOneHbbFatJet);
 
-        // Cut#5: Require the Hbb score > 0.5
+
+  
+        // Cut#5: Require the Hbb score > 0.8
         float maxhbbscore = Analysis::fatJets_[0].hbbScore;
-        int maxHbbNo = 0;
+        int maxHbbNo = -999;
         for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
             if (Analysis::fatJets_[ifatjet].hbbScore >= maxhbbscore) {
                 maxHbbNo = ifatjet;
@@ -1086,11 +1098,13 @@ int main(int argc, char** argv)
         cut6_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
 
+        
         // Cut#6: Require that there are at least 2 pt > 30 GeV jets
         
         if (not (Analysis::jets_.size() >= 2)) { continue; }
         Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastTwoPt30Jets);
         cut7_events ++;
+
 
         // Cut#7: Require mjj > 500, deltaEtajj > 3
         if (not ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500)) { continue;}
@@ -1099,15 +1113,19 @@ int main(int argc, char** argv)
         cut8_events ++;
 
         // Fill Lepton Histogram;
-        Hist::fillLeptonsKinematicHistograms();
 
         // All cuts have passed
         // Now fill the histograms
         if (gen_level) { Hist::fillGenLevelHistograms(); }
+
         Hist::fillSHatHistograms();
-        Hist::fillJetsKinematicHistograms();
+        Hist::fillLeptonsKinematicHistograms();
         Hist::fillHbbFatJetKinematicHistograms();
- 
+        Hist::fillJetsKinematicHistograms();
+        Hist::fillLeptonsKinematicHistograms();
+
+
+
     }
 
     // Write out the histograms
