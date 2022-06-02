@@ -293,7 +293,7 @@ namespace Analysis
         }
     }
 
-    //_______________________________________________________
+    // _______________________________________________________
     // Select Fatjets
     void selectFatJets()
     {
@@ -552,6 +552,10 @@ namespace Cutflow
         kHbbScore,
         kAtLeastTwoPt30Jets,
         kMjj,
+        kMll,
+        kDrlep,
+        kZhmass,
+//        kEtahbb,
         kNCuts,
     };
 
@@ -1112,6 +1116,27 @@ int main(int argc, char** argv)
         Cutflow::fillCutflow(Cutflow::Cuts::kMjj);
         cut8_events ++;
 
+        // Cut#8: window cut of massLL [80,100]
+        if (not (((Analysis::leptons_[0]+Analysis::leptons_[1]).M()) >= 80 && ((Analysis::leptons_[0]+Analysis::leptons_[1]).M()) <= 100)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kMll);
+
+        // Cut#9: Require dRLep<1.5
+        LV lep1 = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[0] : Analysis::leptons_[1];
+        LV lep2 = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[1] : Analysis::leptons_[0];
+        if (not (RooUtil::Calc::DeltaR(lep1, lep2) <= 1.5)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kDrlep);
+
+        // Cut#10: Require massZH>250
+        if (not ((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M() >= 250)) { continue; } 
+        Cutflow::fillCutflow(Cutflow::Cuts::kZhmass);
+
+
+        // Cut#8: Require etaHbb<1.6
+        /*
+        if (not (Analysis::hbbFatJet_.Eta() <= 1.3)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kEtahbb);
+
+        */
         // Fill Lepton Histogram;
 
         // All cuts have passed
