@@ -57,7 +57,6 @@ namespace Obj
 namespace Analysis
 {
 
-    Int_t FJnonzero_;
     //_______________________________________________________
     // Per event weight (normalized to 1/fb of data)
     Double_t scale1fb_;
@@ -143,7 +142,7 @@ namespace Analysis
         gen_ijet_ = LV();
         gen_jjet_ = LV();
         gen_jet0_ = LV();
-        gen_jet1_ = LV();
+        gen_jet2_ = LV();
         gen_H_ = LV();
         gen_b0_ = LV();
         gen_b1_ = LV();
@@ -449,7 +448,6 @@ namespace Analysis
         
     //___________________________________________________________
     // Select jet quarks
-
     void classifyJet()
     {
         
@@ -550,6 +548,7 @@ namespace Cutflow
         kTwoLightLeptons,
         kOneHbbFatJet,
         kHbbScore,
+        kWscore,
         kAtLeastTwoPt30Jets,
         kMjj,
         kMll,
@@ -1091,16 +1090,24 @@ int main(int argc, char** argv)
   
         // Cut#5: Require the Hbb score > 0.8
         float maxhbbscore = Analysis::fatJets_[0].hbbScore;
+        float maxwscore = Analysis::fatJets_[1].hbbScore;
+        int maxwNo = -999;
         int maxHbbNo = -999;
         for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
             if (Analysis::fatJets_[ifatjet].hbbScore >= maxhbbscore) {
                 maxHbbNo = ifatjet;
                 maxhbbscore = Analysis::fatJets_[ifatjet].hbbScore;
             }
+            else if (Analysis::fatJets_[ifatjet].hbbScore <= maxhbbscore && Analysis::fatJets_[ifatjet].hbbScore >= maxwscore) {
+                maxwNo = ifatjet;
+                maxwscore = Analysis::fatJets_[ifatjet].hbbScore;
+            }
         }
-        if (maxhbbscore < 0.8) { continue;}
+        if (maxhbbscore < 0.9) { continue;}
         cut6_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
+        if (maxwscore < 0.9) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kWscore);
 
         
         // Cut#6: Require that there are at least 2 pt > 30 GeV jets
@@ -1127,7 +1134,7 @@ int main(int argc, char** argv)
         Cutflow::fillCutflow(Cutflow::Cuts::kDrlep);
 
         // Cut#10: Require massZH>250
-        if (not ((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M() >= 250)) { continue; } 
+        if (not ((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M() >= 215)) { continue; } 
         Cutflow::fillCutflow(Cutflow::Cuts::kZhmass);
 
 
