@@ -45,6 +45,7 @@ namespace Obj
         float isBtagScore;
         int isBtagTight;
         int isBtagLoose;
+        double mass;
     };
     
 }
@@ -141,7 +142,7 @@ namespace Analysis
         gen_ijet_ = LV();
         gen_jjet_ = LV();
         gen_jet0_ = LV();
-        gen_jet1_ = LV();
+        gen_jet2_ = LV();
         gen_H_ = LV();
         gen_b0_ = LV();
         gen_b1_ = LV();
@@ -187,11 +188,11 @@ namespace Analysis
             gen_jjet_ = nt.GenPart_p4()[3];
             gen_jet0_ = gen_ijet_.pt() > gen_jjet_.pt() ? gen_ijet_ : gen_jjet_;
             gen_jet1_ = gen_ijet_.pt() > gen_jjet_.pt() ? gen_jjet_ : gen_ijet_;
-	    for (unsigned int i = 0; i < 7; ++i) {
-		if (abs(nt.GenPart_pdgId()[i] == 24)) { gen_W_.push_back(nt.GenPart_p4()[i]);}
-		if (abs(nt.GenPart_pdgId()[i] == 23)) { gen_Z_.push_back(nt.GenPart_p4()[i]);}
-		if (abs(nt.GenPart_pdgId()[i] == 25)) { gen_H_ = nt.GenPart_p4()[i];} 
-	    }
+            for (unsigned int i = 0; i < 7; ++i) {
+                if (abs(nt.GenPart_pdgId()[i] == 24)) { gen_W_.push_back(nt.GenPart_p4()[i]);}
+                if (abs(nt.GenPart_pdgId()[i] == 23)) { gen_Z_.push_back(nt.GenPart_p4()[i]);}
+                if (abs(nt.GenPart_pdgId()[i] == 25)) { gen_H_ = nt.GenPart_p4()[i];} 
+            }
             // Select b quarks and hbb
             std::vector<LV> h_decay_p4s;
             std::vector<int> h_decay_pdgIds;
@@ -208,9 +209,10 @@ namespace Analysis
                     // h_decay_statuses.push_back(nt.GenPart_status()[igen]);
                 }
             }
-            if (abs(h_decay_pdgIds[0]) == 5)
-            {
-                is_hbb = true;
+            if (h_decay_pdgIds.size() != 0) {
+                if (abs(h_decay_pdgIds[0]) == 5) {
+                    is_hbb = true;
+                }
             }
             if (is_hbb) 
             {
@@ -234,8 +236,10 @@ namespace Analysis
                     // w_decay_statuses.push_back(nt.GenPart_status()[igen]);
                 }
             }
-            if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
-                is_wjj = true;
+            if (w_decay_pdgIds.size() != 0) {
+                if (abs(w_decay_pdgIds[0]) >= 1 and abs(w_decay_pdgIds[0]) <= 5 and (w_decay_pdgIds[0] * w_decay_pdgIds[1]) < 0){
+                    is_wjj = true;
+                }
             }
             if (is_wjj) 
             {
@@ -288,7 +292,7 @@ namespace Analysis
         }
     }
 
-    //_______________________________________________________
+    // _______________________________________________________
     // Select Fatjets
     void selectFatJets()
     {
@@ -320,9 +324,10 @@ namespace Analysis
             // Then skip
             if (isOverlap)
                 continue;
-
+           
             // Keep fat jets softdropmass above 40 GeV
             float boostedMass = nt.FatJet_msoftdrop()[ifatjet]; 
+            this_fatJet.mass = boostedMass;
             if (not (boostedMass > 40.))
                 continue;
 
@@ -341,19 +346,19 @@ namespace Analysis
         // FatJet Selection
         if (fatJets_.size() > 0) 
         { 
-            float maxhbbscore = fatJets_[0].hbbScore;
-            float maxwjjscore = fatJets_[0].wjjScore;
-            int maxHbbNo = 0;
-            int maxWjjNo = 0;
+            float maxhbbscore = -999;
+            float maxwjjscore = -999;
+            int maxHbbNo;
+            int maxWjjNo;
         // Prioritize Hbb selection
-            for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+            for (unsigned int ifatjet = 0; ifatjet < fatJets_.size(); ifatjet++) {
                 if (fatJets_[ifatjet].hbbScore >= maxhbbscore) {
                     maxHbbNo = ifatjet;
                     maxhbbscore = fatJets_[ifatjet].hbbScore;
                 }
             }
             hbbFatJet_ = fatJets_[maxHbbNo].p4;
-            for (unsigned int ifatjet = 1; ifatjet < fatJets_.size(); ifatjet++) {
+            for (unsigned int ifatjet = 0; ifatjet < fatJets_.size(); ifatjet++) {
                 if (fatJets_[ifatjet].wjjScore >= maxwjjscore && ifatjet != maxHbbNo) {
                     maxWjjNo = ifatjet;
                     maxwjjscore = fatJets_[ifatjet].wjjScore;
@@ -445,6 +450,7 @@ namespace Analysis
     // Select jet quarks
     void classifyJet()
     {
+        
         if (jets_.size() == 0)
             return;
         double largestEta1 = -999;
@@ -477,6 +483,7 @@ namespace Analysis
                 break;
             }
         }
+
         for (unsigned int j = 0; j <jets_.size(); j++) {
             if (j != VBFIndex1 && j != VBFIndex2) {
                 double jetpT = (jets_[j].p4).Pt();
@@ -541,8 +548,13 @@ namespace Cutflow
         kTwoLightLeptons,
         kOneHbbFatJet,
         kHbbScore,
+        kWscore,
         kAtLeastTwoPt30Jets,
         kMjj,
+        kMll,
+        kDrlep,
+        kZhmass,
+//        kEtahbb,
         kNCuts,
     };
 
@@ -633,6 +645,7 @@ namespace Hist
     TH1F* ptWjj_;
     TH1F* massHbb;
     TH1F* nFatjets_;
+    TH1F* softdropmass_;
 
     // FatJetScore
     TH1F* wjjScore_;
@@ -642,7 +655,7 @@ namespace Hist
 
     // s-hat variable
     TH1F* massZH_;
-    TH1F* massZHzoom;
+    TH1F* massZHzoom_;
     TH1F* ST_;
 
     //_______________________________________________________
@@ -665,7 +678,8 @@ namespace Hist
         // bQ kinematics
         h_gen_massbQsystem_ = new TH1F("h_gen_massbQsystem", "Mass of bottom quark system", 1080, 0, 200);
         h_gen_ptb0_ = new TH1F("h_gen_ptb0", "pt of leading bottom quarks", 1080, 0, 400);
-        h_gen_ptb1_ = new TH1F("h_gen_ptb1", "pt of subleading bottom quarks", 1080, 0, 400);
+        h_gen_deltaEta_ = new TH1F("h_gen_deltaEta", "Delta Eta of VBF quarks", 1080, 0, 10);
+        h_gen_massVBF_ = new TH1F("h_gen_massVBF", "Invariant mass of VBF quark system", 1080, 0, 3500);
         // Leptons kinematics
         ptLep1 = new TH1F("ptLep1", "pt of leading leptons_", 1080, 0, 600);
         ptLep2 = new TH1F("ptLep2", "pt of subleading leptons_", 1080, 0, 600);
@@ -676,7 +690,6 @@ namespace Hist
         massDiLep = new TH1F("massDiLep", "mass of dileptons", 1080, 0, 250);
         ptDiLep = new TH1F("ptDiLep", "pt of the dilepton system", 1080, 0, 1800);
         dRLep = new TH1F("dRLep", "delta R between two leptons_", 1080, 0, 5);
-        
         //______________________________________________________
         // jets kinematics
         etaVBFjet1 = new TH1F("etaVBFjet1", "eta of leading VBF jet", 1080, -5, 5); 
@@ -699,18 +712,18 @@ namespace Hist
         etaWjj_ = new TH1F("etaWjj", "eta of Wjj fatjet", 1080, -5, 5);
         massHbb = new TH1F("massHbb", "mass of Hbb fatjet", 1080, 0, 200);
         nFatjets_ = new TH1F("nFatjets", "Number of fatjets", 5, 0, 5);
-        
+        softdropmass_ = new TH1F("softdropmass", "softdrop mass of hbb fatjets", 1080, 0, 200);
+
         //______________________________________________________
         // fatJets Score
         hbbScore_ = new TH1F("hbbScore", "hbb score of fatjets", 1080, 0, 1);
         hjetScore_ = new TH1F("hjetScore", "the hbb score of the selected hbb fatjet", 1080, 0, 1);
         wjetScore_ = new TH1F("wjetScore", "the wjj score of the selected wjj fatjet", 1080, 0, 1);
-        wjjScore_ = new TH1F("wjjScore", "wjj score of fatjets", 1080, 0, 1);
-
+        wjjScore_ = new TH1F("wjjScore", "wjj score of fatjets", 1080, 0, 1); 
         //_______________________________________________________
         // s-hat variable
         massZH_ = new TH1F("massZH", "Invariant mass of the ZH system", 1080, 0, 3500);
-        massZHzoom = new TH1F("massZHzoom", "Invariant mass of the ZH system", 1080, 0, 500);
+        massZHzoom_ = new TH1F("massZHzoom", "Invariant mass of the ZH system", 1080, 0, 500);
         ST_ = new TH1F("ST", "Scalar sum of VVH system", 1080, 0, 3500);
     }
 
@@ -727,7 +740,9 @@ namespace Hist
         for (unsigned int j = 0; j < Analysis::fatJets_.size(); j++) {
             hbbScore_->Fill(Analysis::fatJets_[j].hbbScore, Analysis::wgt_);
             wjjScore_->Fill(Analysis::fatJets_[j].wjjScore, Analysis::wgt_);
+            softdropmass_->Fill(Analysis::fatJets_[j].mass, Analysis::wgt_);
         }
+
         float max_hbbScore = -999;
         for (unsigned int j = 0; j < Analysis::fatJets_.size(); j++) {
             if (max_hbbScore < Analysis::fatJets_[j].hbbScore)
@@ -810,7 +825,7 @@ namespace Hist
     void fillSHatHistograms()
     {
         massZH_->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
-        massZHzoom->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
+        massZHzoom_->Fill((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M(), Analysis::wgt_);
         ST_->Fill(Analysis::leptons_[0].pt() + Analysis::leptons_[1].pt() + Analysis::hbbFatJet_.pt() + Analysis::wjjFatJet_.pt(), Analysis::wgt_);
     }
     
@@ -840,7 +855,9 @@ namespace Hist
             dRsubleadingVBF->Write();
             dRsubleadingbq->Write();
             dRleadingbq->Write();
+            dRhiggs->Write();
         }
+        softdropmass_->Write();
         ptLep1->Write();
         ptLep2->Write();
         re_deltaEtaVBF->Write();
@@ -873,9 +890,8 @@ namespace Hist
         wjjScore_->Write();
         hjetScore_->Write();
         massZH_->Write();
-        massZHzoom->Write();
         ST_->Write();
-        dRhiggs->Write();
+        massZHzoom_->Write();
     }
 
 }
@@ -896,7 +912,10 @@ int main(int argc, char** argv)
     bool gen_level;
     int n_events;
      
-
+    // Set the year 
+    Analysis::setYear(2018); // TODO: Update properly in the future. For now it's a Placeholder!
+    nt.SetYear(2018);
+ 
     // Grand option setting
     cxxopts::Options options("\n  $ doAnalysis",  "\n         **********************\n         *                    *\n         *       Looper       *\n         *                    *\n         **********************\n");
 
@@ -906,7 +925,7 @@ int main(int argc, char** argv)
         ("o,output"      , "Output file name"                                                                                    , cxxopts::value<std::string>())
         ("n,nevents"     , "N events to loop over"                                                                               , cxxopts::value<int>()->default_value("-1"))
         ("s,scale1fb"    , "pass scale1fb of the sample"                                                                         , cxxopts::value<float>())
-	("g,gen_level"   , "pass boolean for whether a gen-level analysis should be done"					 , cxxopts::value<bool>()->default_value("false"))
+    	("g,gen_level"   , "pass boolean for whether a gen-level analysis should be done"					 , cxxopts::value<bool>()->default_value("false"))
         ("h,help"        , "Print help")
         ;
 
@@ -979,10 +998,7 @@ int main(int argc, char** argv)
     // Set the luminosity
     Analysis::setLumi(137); // TODO: Update properly in the future. For now it's a Placeholder!
 
-    // Set the year 
-    Analysis::setYear(2018); // TODO: Update properly in the future. For now it's a Placeholder!
-
-    // Set up year dependent configuration of the analysis that are POG specific from CMS
+   // Set up year dependent configuration of the analysis that are POG specific from CMS
     Analysis::setConfig();
 
     // Input Path (RooUtil::Looper can accept comma separated list)
@@ -998,7 +1014,6 @@ int main(int argc, char** argv)
 
     // Create a looper that will handle event looping
     RooUtil::Looper<Nano> looper;
-    nt.SetYear(Analysis::year_);
 
     // Initializer the looper
     looper.init(events_tchain, &nt, n_events);
@@ -1016,8 +1031,7 @@ int main(int argc, char** argv)
     // Loop through events
     while (looper.nextEvent())
     {
-	// dumpGenParticleInfos();
-        // print out information
+	    // dumpGenParticleInfos();
           
         // Run the analysis algorithms (selections, computing variables, etc.)
         Analysis::runAlgorithms();
@@ -1042,17 +1056,17 @@ int main(int argc, char** argv)
 
         // Cut#3: Require that there are exactly two leptons
         if (not ((Analysis::elecs_.size() == 2) || (Analysis::muons_.size() == 2))) { continue; }
-            // Cut#3: Require that the two leptons have OS (opposite-sign)
-            int is_os = false;
-            if (Analysis::elecs_.size() == 2)
-            {
-                is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
-            }
-            else if (Analysis::muons_.size() == 2)
-            {
-                is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
-            }
-            else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
+        // Cut#3: Require that the two leptons have OS (opposite-sign)
+        int is_os = false;
+        if (Analysis::elecs_.size() == 2)
+        {
+            is_os = Analysis::elecs_[0].pdgid * Analysis::elecs_[1].pdgid < 0;
+        }
+        else if (Analysis::muons_.size() == 2)
+        {
+            is_os = Analysis::muons_[0].pdgid * Analysis::muons_[1].pdgid < 0;
+        }
+        else if (Analysis::muons_.size() == 1 && Analysis::elecs_.size() == 1)
         {
             is_os = Analysis::muons_[0].pdgid * Analysis::elecs_[0].pdgid < 0;
         }
@@ -1065,30 +1079,43 @@ int main(int argc, char** argv)
         if (not (leading.Pt() >= 40 && subleading.Pt() >= 30)) {continue;}
         Cutflow::fillCutflow(Cutflow::Cuts::kTwoLightLeptons);
         cut4_events ++;
-
-        // Cut#4: Require at least two fatjet with softdropmass > 40 GeV
+        
+        
+        // Cut#4: Require at least two fatjet with softdropmass > 20 GeV
         if (not (Analysis::fatJets_.size() >= 2 ) ) { continue;}
         cut5_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kOneHbbFatJet);
 
-        // Cut#5: Require the Hbb score > 0.5
+
+  
+        // Cut#5: Require the Hbb score > 0.8
         float maxhbbscore = Analysis::fatJets_[0].hbbScore;
-        int maxHbbNo = 0;
+        float maxwscore = Analysis::fatJets_[1].hbbScore;
+        int maxwNo = -999;
+        int maxHbbNo = -999;
         for (unsigned int ifatjet = 1; ifatjet < Analysis::fatJets_.size(); ifatjet++) {
             if (Analysis::fatJets_[ifatjet].hbbScore >= maxhbbscore) {
                 maxHbbNo = ifatjet;
                 maxhbbscore = Analysis::fatJets_[ifatjet].hbbScore;
             }
+            else if (Analysis::fatJets_[ifatjet].hbbScore <= maxhbbscore && Analysis::fatJets_[ifatjet].hbbScore >= maxwscore) {
+                maxwNo = ifatjet;
+                maxwscore = Analysis::fatJets_[ifatjet].hbbScore;
+            }
         }
-        if (maxhbbscore < 0.8) { continue;}
+        if (maxhbbscore < 0.9) { continue;}
         cut6_events ++;
         Cutflow::fillCutflow(Cutflow::Cuts::kHbbScore);
+        if (maxwscore < 0.9) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kWscore);
 
+        
         // Cut#6: Require that there are at least 2 pt > 30 GeV jets
         
         if (not (Analysis::jets_.size() >= 2)) { continue; }
         Cutflow::fillCutflow(Cutflow::Cuts::kAtLeastTwoPt30Jets);
         cut7_events ++;
+
 
         // Cut#7: Require mjj > 500, deltaEtajj > 3
         if (not ((Analysis::VBFjets_[0] + Analysis::VBFjets_[1]).M() > 500)) { continue;}
@@ -1096,16 +1123,41 @@ int main(int argc, char** argv)
         Cutflow::fillCutflow(Cutflow::Cuts::kMjj);
         cut8_events ++;
 
+        // Cut#8: window cut of massLL [80,100]
+        if (not (((Analysis::leptons_[0]+Analysis::leptons_[1]).M()) >= 80 && ((Analysis::leptons_[0]+Analysis::leptons_[1]).M()) <= 100)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kMll);
+
+        // Cut#9: Require dRLep<1.5
+        LV lep1 = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[0] : Analysis::leptons_[1];
+        LV lep2 = (Analysis::leptons_[0]).Pt() > (Analysis::leptons_[1]).Pt() ? Analysis::leptons_[1] : Analysis::leptons_[0];
+        if (not (RooUtil::Calc::DeltaR(lep1, lep2) <= 1.5)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kDrlep);
+
+        // Cut#10: Require massZH>250
+        if (not ((Analysis::leptons_[0] + Analysis::leptons_[1] + Analysis::hbbFatJet_).M() >= 215)) { continue; } 
+        Cutflow::fillCutflow(Cutflow::Cuts::kZhmass);
+
+
+        // Cut#8: Require etaHbb<1.6
+        /*
+        if (not (Analysis::hbbFatJet_.Eta() <= 1.3)) { continue;}
+        Cutflow::fillCutflow(Cutflow::Cuts::kEtahbb);
+
+        */
         // Fill Lepton Histogram;
-        Hist::fillLeptonsKinematicHistograms();
 
         // All cuts have passed
         // Now fill the histograms
         if (gen_level) { Hist::fillGenLevelHistograms(); }
+
         Hist::fillSHatHistograms();
-        Hist::fillJetsKinematicHistograms();
+        Hist::fillLeptonsKinematicHistograms();
         Hist::fillHbbFatJetKinematicHistograms();
- 
+        Hist::fillJetsKinematicHistograms();
+        Hist::fillLeptonsKinematicHistograms();
+
+
+
     }
 
     // Write out the histograms

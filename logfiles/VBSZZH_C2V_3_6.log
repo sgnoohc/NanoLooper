@@ -1,0 +1,60 @@
+>>> Cannot configure for year 0!! Values remain unset!
+>>> Hostname is uaf-8.t2.ucsd.edu
+inputs : /home/users/joytzphysics//VBSZZH_C2V_3/output_13.root
+                                                                                                    RooUtil:: Adding /home/users/joytzphysics//VBSZZH_C2V_3/output_13.root
+                                                                                                    RooUtil:: Start EventLooping
+                                                                                                    RooUtil:: System info:
+uaf-8.t2.ucsd.edu
+Linux uaf-8.t2.ucsd.edu 5.14.13-1.el7.elrepo.x86_64 #1 SMP Fri Oct 15 13:26:13 EDT 2021 x86_64 x86_64 x86_64 GNU/Linux
+Wed Feb 16 12:33:35 PST 2022
+joytzphysics
+/home/users/joytzphysics/NanoLooper
+                                                                                                    RooUtil::  _
+                                                                                                    RooUtil:: /\\
+                                                                                                    RooUtil:: \ \\  \__/ \__/
+                                                                                                    RooUtil::  \ \\ (oo) (oo)  Here we come!
+                                                                                                    RooUtil::   \_\\/~~\_/~~\_
+                                                                                                    RooUtil::  _.-~===========~-._
+                                                                                                    RooUtil:: (___________________)
+                                                                                                    RooUtil::       \_______/
+                                                                                                    RooUtil:: 
+                                                                                                    RooUtil::  Your friendly aliens
+                                                                                                    RooUtil::      Surf & Turf
+                                                                                                    RooUtil:: 
+Warning in <TClass::Init>: no dictionary for class __pair_base<edm::Hash<1>,edm::ParameterSetBlob> is available
+                                                                                                    RooUtil:: Total Events in this Chain to process = 25000
+                                                                                                    RooUtil:: TTreeCache enabled
+                                                                                                    RooUtil:: Looping /home/users/joytzphysics//VBSZZH_C2V_3/output_13.root/TTree:Events
+
+ *** Break *** segmentation violation
+
+
+
+===========================================================
+There was a crash.
+This is the entire stack trace of all threads:
+===========================================================
+#0  0x00007efd4c40f60c in waitpid () from /lib64/libc.so.6
+#1  0x00007efd4c38cf62 in do_system () from /lib64/libc.so.6
+#2  0x00007efd4ed49a8b in TUnixSystem::StackTrace() () from /cvmfs/cms.cern.ch/slc7_amd64_gcc700/cms/cmssw/CMSSW_10_2_13/external/slc7_amd64_gcc700/lib/libCore.so
+#3  0x00007efd4ed4c0cc in TUnixSystem::DispatchSignals(ESignals) () from /cvmfs/cms.cern.ch/slc7_amd64_gcc700/cms/cmssw/CMSSW_10_2_13/external/slc7_amd64_gcc700/lib/libCore.so
+#4  <signal handler called>
+#5  Analysis::computeSignalGeneratorLevelKinematics () at main.cc:237
+#6  0x00000000004218c3 in Analysis::runAlgorithms () at main.cc:507
+#7  0x000000000041d51d in main (argc=0, argv=0x6f) at main.cc:1003
+===========================================================
+
+
+The lines below might hint at the cause of the crash.
+You may get help by asking at the ROOT forum http://root.cern.ch/forum.
+Only if you are really convinced it is a bug in ROOT then please submit a
+report at http://root.cern.ch/bugs. Please post the ENTIRE stack trace
+from above as an attachment in addition to anything else
+that might help us fixing this issue.
+===========================================================
+#5  Analysis::computeSignalGeneratorLevelKinematics () at main.cc:237
+#6  0x00000000004218c3 in Analysis::runAlgorithms () at main.cc:507
+#7  0x000000000041d51d in main (argc=0, argv=0x6f) at main.cc:1003
+===========================================================
+
+
